@@ -1,7 +1,7 @@
 
 CFLAGS=-g
 
-top : rayplott
+top : tl
 
 rayplott : rayplot
 	rayplot

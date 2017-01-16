@@ -23,14 +23,14 @@ int  locate( Solution *sol, Phase *pp )
 #define MAXPHASES 30 
 	double x[4],x0[4],b[MAXPHASES],a[4*MAXPHASES] ;
 	double dx[4], dxtest[4] ;
-	double tt,dlon,distance,residual,sum ;
+	double tt,dlon,distance,residual,sumP,sumS,stdP,stdS ;
 	double rayp,dtdx,dxdp,km2lat,km2lon ;
 	double dz,ttz,dtdz,dtdla,dtdlo ;
 	double dl,dtdlax,dtdlox,damp, weight ;
 	VelModel *vm ;
 	Phase *p ;
 	Station *s ;
-	int np,i,j,iter ;
+	int np,i,j,iter,ns ;
 	if (sol->index != pp->index ) {
 		rLog(2,"Index in locate does not match",NULL) ;
 		return 0 ;
@@ -49,14 +49,13 @@ int  locate( Solution *sol, Phase *pp )
 	km2lon = km2lat * cos(sol->lat * M_PI/180.0 ) ;
 	printModel("x0",x0) ;
 	for ( iter = 0 ; iter < 12 ; iter++) {
-	  sum = 0.0 ;
+	  sumP = 0.0 ; sumS = 0.0 ; ns = 0 ;
 	  for( i = 0 ; i < np ; i++ ) {
 		p = pp+i ;
 		s = p->statP ;
 		dlon = x0[2] - s->lon ;
 		if( p->type == 'P' ) vm = &mp ; else vm = &ms ;
-		if( p->type == 'P' ) weight = 1.0 ; else weight = 2.7 ;
-		weight = 1.0 ;
+		if( p->type == 'P' ) weight = 1.0 ; else weight = 0.8 ;
 		distance = gDistance(x0[1],s->lat,dlon) ;
 		tt = timeFromDist(vm,distance,x0[3],&rayp,&dtdx,&dxdp) + x0[0] ;
 		ttz = timeFromDist(vm,distance,x0[3]+dz,&rayp,&dtdx,&dxdp) +x0[0] ;
@@ -76,7 +75,7 @@ int  locate( Solution *sol, Phase *pp )
 		dtdlox = (ttz-tt)/dl ;
 
 		residual = tt - p->pTime ;
-		sum += residual*residual ;
+		if( p->type == 'P' )sumP += residual*residual ; else {sumS +=  residual*residual ; ns++ ; }
 		printf("%s %c %10.6f %10.6f %10.6f %10.6f %10.6f ",s->name,p->type,p->pTime,tt,residual,distance,x0[3]) ;
 		printf("%8.4f  %8.4f %8.4f ",dtdlax,dtdlox,1.0/dtdx) ;
 		printModel(" dx ",dx) ;
@@ -84,10 +83,12 @@ int  locate( Solution *sol, Phase *pp )
 	   golubC(a,x,b,np,4) ;
 	   printModel(" x ",x) ;
 	   damp = 0.55 ;
-	   if( iter > 7 ) damp = 1.0 ;
+	   if( iter > 5 ) damp = 1.0 ;
 	   for( j = 0 ; j < 4 ; j++) x0[j] += damp*x[j] ;
 	   printModel(" x0",x0) ;
-	   printf("std_dev =%10.6f damp=%7.2f\n",sqrt(sum/np),damp) ;
+	   stdP = sqrt(sumP/(np-ns)) ;
+	   stdS = sqrt(sumS/ns) ;
+	   printf("iter = %2d  stdP =%9.6f stdS =%9.6f damp=%7.2f\n",iter,stdP,stdS,damp) ;
 	}
 }
 
@@ -111,7 +112,7 @@ doit()
 	readVelModel(sModel,&ms) ;
 	nPhases = readPhases(phaseFile,&phases ) ;
 	nLoc = readCtloc(solFile,&location) ;
-	lp = location + 6 ;
+	lp = location + 99 ;
 	index = lp->index ;
 	printf("index=%ld\n",index) ;
 	ip = phases ;
