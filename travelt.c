@@ -18,6 +18,7 @@ double sourceDepth = 4.5 ;
 double bottomDepth = 15 ;
 double velReduce = 7.0 ;
 int nPoint = 10 ;
+int depthPhaseFlag ;
 double xSolve,zSolve ;
 char *tableFile ;
 double xEnd ;
@@ -73,7 +74,8 @@ void doIt()
 {
 	double pMax, pBottom, p,pp , dp, x,t, reduce ;
 	double dtdx,dpdx,p1,x1,dxdp ;
-	int il,i, mmode ;
+	int il,i ;
+	Mode mmode ;
 	FILE *ofd ;
 	ofd = fopen(outputName,"w") ;
 	if( velReduce > 0.0 ) reduce = 1.0/velReduce ; else reduce = 0.0 ; 
@@ -83,12 +85,13 @@ void doIt()
 	if( shLogLevel >= 3 ) printVelModel( &m) ;
 	pMax = 1.0/velZ(sourceDepth,&m,&il ) ;
 	mmode = RayDown ;
-	if( sourceDepth <= 0.0 ) mmode = SURFACE ; 
-	else for( i = 0 ; i < nPoint ; i++) {
+	if( depthPhaseFlag ) mmode = DepthPhase ;
+	if( sourceDepth <= 0.0 ) mmode = Surface ; 
+	if ( mmode < Surface)  for( i = 0 ; i < nPoint ; i++) {
 		p1 = (i + 0.8) *pMax / nPoint ;
-		x1 = traceUD( RayUP, p1, sourceDepth, &m, &t) ;
+		x1 = traceUD( RayUp, p1, sourceDepth, &m, &t) ;
 		p = (i + 0.81) *pMax / nPoint ;
-		x = traceUD( RayUP, p, sourceDepth, &m, &t) ;
+		x = traceUD( RayUp, p, sourceDepth, &m, &t) ;
 		dpdx = ( p1-p) / (x1-x) ;
 		fprintf(ofd,"%10.5f %10.5f %6d %10.6f %10.6f\n",x,t-x*reduce,i,p,dpdx) ;
 	}
@@ -125,7 +128,7 @@ int main(int ac , char **av )
 	extern int optind ;
 	int cc ;
 	feenableexcept(FE_INVALID) ;
-	while( EOF != (cc = getopt(ac,av,"f:l:d:n:b:v:o:sr:x:t:X:hH?"))) {
+	while( EOF != (cc = getopt(ac,av,"f:l:d:n:b:v:o:sr:x:t:X:DhH?"))) {
 		switch(cc) {
 		case 'f':	velFile=optarg ; break ;
 		case 'l' :	shLogLevel = atoi(optarg) ; break ;
@@ -138,8 +141,10 @@ int main(int ac , char **av )
 		case 'r' :	nResample = atoi(optarg) ; dzResample = atof(av[optind++]) ; break ;
 		case 'x' :      xSolve = atof(optarg) ; break ;
 		case 't' :	tableFile = optarg ; break ;
+		case 'D' :	depthPhaseFlag = 1 ; break ;
 		case 'X' : 	xEnd = atof(optarg) ; xCount =  atof(av[optind++]) ; break ;
 	}}
+	if( sourceDepth <= 0.0 ) depthPhaseFlag = 0 ;
 	if( 0 == *outputName )  makeOutputName(ac,*av) ; 
 	fprintf(stderr,"_%s_\n",outputName) ;
 	doIt() ;

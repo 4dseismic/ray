@@ -5,6 +5,8 @@
 */
 #include <stdlib.h>
 #include <stdio.h>
+#define _GNU_SOURCE
+#include <fenv.h>
 #include <math.h>
 #include "ray.h"
 
@@ -27,6 +29,7 @@ int  locate( Solution *sol, Phase *pp )
 	double rayp,dtdx,dxdp,km2lat,km2lon ;
 	double dz,ttz,dtdz,dtdla,dtdlo ;
 	double dl,dtdlax,dtdlox,damp, weight ;
+	double kme,kmn, lenx, azi ;
 	VelModel *vm ;
 	Phase *p ;
 	Station *s ;
@@ -43,12 +46,12 @@ int  locate( Solution *sol, Phase *pp )
 	x0[0] = 0.0 ;         /* origin time, sec */
 	x0[1] = sol->lat ;    /* latitude, degrees */
 	x0[2] = sol->lon ;	/* longitude, degrees */
-	x0[3] = sol->depth ;	/* depth, km */
+	x0[3] = sol->depth;	/* depth, km */
 	dz = 0.01 ;
 	km2lat = 6391*M_PI/180.0 ;
 	km2lon = km2lat * cos(sol->lat * M_PI/180.0 ) ;
 	printModel("x0",x0) ;
-	for ( iter = 0 ; iter < 12 ; iter++) {
+	for ( iter = 0 ; iter < 25 ; iter++) {
 	  sumP = 0.0 ; sumS = 0.0 ; ns = 0 ;
 	  for( i = 0 ; i < np ; i++ ) {
 		p = pp+i ;
@@ -56,7 +59,7 @@ int  locate( Solution *sol, Phase *pp )
 		dlon = x0[2] - s->lon ;
 		if( p->type == 'P' ) vm = &mp ; else vm = &ms ;
 		if( p->type == 'P' ) weight = 1.0 ; else weight = 0.8 ;
-		distance = gDistance(x0[1],s->lat,dlon) ;
+		distance = sDistance(x0[1],s->lat,dlon) ;
 		tt = timeFromDist(vm,distance,x0[3],&rayp,&dtdx,&dxdp) + x0[0] ;
 		ttz = timeFromDist(vm,distance,x0[3]+dz,&rayp,&dtdx,&dxdp) +x0[0] ;
 		dtdz = (ttz-tt)/dz ;
@@ -65,7 +68,9 @@ int  locate( Solution *sol, Phase *pp )
 		dx[0] = 1.0 ; dx[1] = dtdla ; dx[2] = dtdlo ; dx[3] = dtdz ;
 		insertRow(dx,a,i,np,4,weight) ;
 		b[i] = weight * ( p->pTime - tt ) ;
-
+		residual = tt - p->pTime ;
+		if( p->type == 'P' )sumP += residual*residual ; else {sumS +=  residual*residual ; ns++ ; }
+/*
 		dl = 0.0001 ;
 		distance = gDistance(x0[1]+dl,s->lat,dlon) ;
 		ttz = timeFromDist(vm,distance,x0[3],&rayp,&dtdx,&dxdp) +x0[0] ;
@@ -74,21 +79,24 @@ int  locate( Solution *sol, Phase *pp )
 		ttz = timeFromDist(vm,distance,x0[3],&rayp,&dtdx,&dxdp) +x0[0] ;
 		dtdlox = (ttz-tt)/dl ;
 
-		residual = tt - p->pTime ;
-		if( p->type == 'P' )sumP += residual*residual ; else {sumS +=  residual*residual ; ns++ ; }
 		printf("%s %c %10.6f %10.6f %10.6f %10.6f %10.6f ",s->name,p->type,p->pTime,tt,residual,distance,x0[3]) ;
 		printf("%8.4f  %8.4f %8.4f ",dtdlax,dtdlox,1.0/dtdx) ;
-		printModel(" dx ",dx) ;
+		printModel(" dx ",dx) ; */
 	   }
 	   golubC(a,x,b,np,4) ;
+	   kmn = x[1]*km2lat ; kme = x[2]*km2lon ;
+	   lenx = sqrt( kmn*kmn + kme*kme + x[3]*x[3] ) ;
+	   azi = atan2(kmn,kme) * 180.0/M_PI ; if( azi < 0 ) azi += 180 ;
 	   printModel(" x ",x) ;
-	   damp = 0.55 ;
-	   if( iter > 5 ) damp = 1.0 ;
+	   damp = 20.0/lenx ;
+#define DAMP 0.45
+	   if(damp > DAMP) damp = DAMP ;
 	   for( j = 0 ; j < 4 ; j++) x0[j] += damp*x[j] ;
 	   printModel(" x0",x0) ;
 	   stdP = sqrt(sumP/(np-ns)) ;
 	   stdS = sqrt(sumS/ns) ;
-	   printf("iter = %2d  stdP =%9.6f stdS =%9.6f damp=%7.2f\n",iter,stdP,stdS,damp) ;
+	   printf("iter = %2d  stdP =%9.6f stdS =%9.6f azi=%5.0f lenx=%7.3f damp=%7.2f\n",iter,stdP,stdS,azi,lenx,damp) ;
+	   if( lenx < 0.01 ) break ;
 	}
 }
 
@@ -106,13 +114,13 @@ doit()
 	int nPhases,nLoc ,i,j ;
 	long long index,i2 ;
 	Station *sp ;
-	initVelModel(20,&mp ) ;
-	initVelModel(20,&ms ) ;
-	readVelModel(pModel,&mp) ;
-	readVelModel(sModel,&ms) ;
+	VelModel jm ;
+	initVelModel(20,&jm ) ;
+	readVelModel(pModel,&jm) ; mp = resampleVelModel(&jm,0.10,105) ;
+	readVelModel(sModel,&jm) ; ms = resampleVelModel(&jm,0.10,105) ;
 	nPhases = readPhases(phaseFile,&phases ) ;
 	nLoc = readCtloc(solFile,&location) ;
-	lp = location + 99 ;
+	lp = location + 29 ;
 	index = lp->index ;
 	printf("index=%ld\n",index) ;
 	ip = phases ;
@@ -127,13 +135,12 @@ doit()
 }
 int main(int ac, char **av) {
 	int cc,n ;
-/*	feenableexcept(FE_INVALID) ; */
+	feenableexcept(FE_INVALID) ; 
 	shLogLevel = 2 ;
-	while( EOF != ( cc = getopt(ac,av,"tpcr"))) {
+	while( EOF != ( cc = getopt(ac,av,"l"))) {
 	    switch(cc) {
-
+	    case 'l' : doit() ;
 	}}
-	doit() ;
 	return 0 ;
 }
 #endif

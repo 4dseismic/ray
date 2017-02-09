@@ -1,7 +1,9 @@
 
 CFLAGS=-g
 
-top : tl
+top : vf
+
+vf : velfit.o
 
 rayplott : rayplot
 	rayplot
@@ -23,7 +25,7 @@ phases : $P phases.c
 	cc -DTEST phases.c $P -o phases -lproj -lm
 
 tl : locate
-	locate 
+	locate  -l
 
 R =  ray.o readdata.o distance.o stations.o phases.o reltest.o
 
@@ -38,7 +40,7 @@ locate : $L locate.c
 
 T = travelt.o ray.o
 
-$T : ray.h
+$T velfit.o : ray.h
 
 travelt : $T
 	cc ${CFLAGS}  -o travelt $T -lm

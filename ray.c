@@ -307,14 +307,14 @@ void rayPoint(double x, double z)
 	fprintf(ff,"%10.3f %10.3f\n",x,z) ;
 } */
 #endif
-double traceUD( int mode, double p, double zSource, VelModel *m, double *tTime)
+double traceUD( Mode mode, double p, double zSource, VelModel *m, double *tTime)
 {
 	int iLayer,i ;
 	double vSource,zold,vold,z,v,xResult,x,t,zz ;
-	double timeUp,xUp, timeDown,xDown ;
+	double timeUp,xUp, timeDown,xDown,xTotal ;
 	zBottom = 0.0 ;
 	xUp = 0.0 ; timeUp = 0.0 ;
-	if( mode != SURFACE ) {
+	if( mode != Surface ) {
 		vSource = velZ( zSource, m, &iLayer) ;
 		zold = zSource ;
 		vold = vSource ;
@@ -333,7 +333,7 @@ double traceUD( int mode, double p, double zSource, VelModel *m, double *tTime)
 			rayPoint(xUp,zold) ;
 #endif 
 		}
-		if( mode == RayUP ) {
+		if( mode == RayUp ) {
 			*tTime = timeUp ;
 	                if( shLogLevel > 7 ) 
                            fprintf(stderr,"Leaving traceUD(%d,1/%8.3f,%8.3f) returning %9.3f\n",
@@ -368,9 +368,14 @@ double traceUD( int mode, double p, double zSource, VelModel *m, double *tTime)
 	if( t > 0.0 ) rayPoint(xDown,zBottom) ; 
 #endif 
 	*tTime = timeUp + timeDown + timeDown ;
+	xTotal = xUp + xDown + xDown ;
+	if( mode == DepthPhase ) {
+		*tTime += timeUp + timeUp ;
+		xTotal += xUp + xUp ;
+	}
 	if( shLogLevel > 7 ) fprintf(stderr,"Leaving traceUD(%d,1/%8.3f,%8.3f) returning %9.3f\n",
-		mode,1.0/p,zSource,xUp + xDown + xDown) ;
-	return( xUp + xDown + xDown ) ;
+		mode,1.0/p,zSource,xTotal) ;
+	return( xTotal ) ;
 }
 double timeFromDist( VelModel *m, double x, double z, double *p, double *dtdx, double *dxdp )
 {
@@ -381,7 +386,7 @@ double timeFromDist( VelModel *m, double x, double z, double *p, double *dtdx, d
 	pMax = 1.0/velZ(z,m,&ii) ;
 	if(shLogLevel > 6 )fprintf(stderr,"vSource=%8.3f ii=%d\n",1.0/pMax,ii) ;
 	if( z <= 0.0 ) xPMax = 0.0 ;
-	else xPMax = traceUD(RayUP, pMax, z, m, &tt) ;
+	else xPMax = traceUD(RayUp, pMax, z, m, &tt) ;
 	if( x > xPMax ) {
 		mode = RayDown ;
 		x0 = xPMax ;
@@ -397,7 +402,7 @@ double timeFromDist( VelModel *m, double x, double z, double *p, double *dtdx, d
 			p0 = p1 ;
 		} 
 	} else {
-		mode = RayUP ; 
+		mode = RayUp ; 
 		x0 = 0.0 ; p0 = 0.0 ;
 		x1 = xPMax ; p1 = pMax ;
 	}
@@ -439,8 +444,8 @@ double timeFromDistX( VelModel *m, double x, double z, double *p, double *dtdx, 
 	char buff[80] ;
 	pMax = 1.0/velZ(z,m,&ii) ;
 	if( z <= 0.0 ) xPMax = 0.0 ;
-	else xPMax = traceUD(RayUP, pMax, z, m, &t0) ;
-	if( x > xPMax ) mode = RayDown ;else mode = RayUP ;
+	else xPMax = traceUD(RayUp, pMax, z, m, &t0) ;
+	if( x > xPMax ) mode = RayDown ;else mode = RayUp ;
 	x0 = xPMax ;
 	p0 = pMax ;
 	p1 = 0.9 * p0 ;
@@ -502,7 +507,7 @@ void testVel()
         x = traceModel(p,z,&m,&t) ;
 /*	x = traceUp(p,z,&m,&t) ;
 	x = traceDown(p,z,&m,&t) ;  */
-	x = traceUD(RayUP,p,z,&m,&t) ;
+	x = traceUD(RayUp,p,z,&m,&t) ;
 	testZ( &m ) ;
 }
 void testRay()
@@ -527,9 +532,9 @@ void test2()
 	pMax = 1.0/velZ(depth,&m,&i) ;
 	for( i = 1 ; i < 2*n ; i++) {
 		p = i*pMax/(2*n) ;
-		x = traceUD(RayUP,p,depth,&m,&t) ;
+		x = traceUD(RayUp,p,depth,&m,&t) ;
 		xd = traceUD(RayDown,p,depth,&m,&td) ;
-		xs = traceUD(SURFACE,p,depth,&m,&ts) ;
+		xs = traceUD(Surface,p,depth,&m,&ts) ;
 		printf("p=%10.4f x=%8.4f %8.4f %8.4f t=%8.4f %8.4f %8.4f\n",
 			p,x,xd,x+xd-xs,t,td,t+td-ts) ;
 	}
