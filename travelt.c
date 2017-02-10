@@ -2,6 +2,21 @@
 	Program to print out traveltime data for 1d linear gradeint layered models.
 	Einar Kjartransson, 2016 
 */
+char *selfDoc = "\
+travelt options\n\
+Program uses raytracing throuch 1D earth that consists of layers where velocity varies linearly with depth.\n\
+	Options:\n\
+-f	velfile	   silp.vel	File that contains the velocity function.\n\
+-l	logLevel		Determines the amount of information printed.\n\
+-d	sourceDepth	4.5	Source depth of earthquake.\n\
+-n	nPoint	 	 10	Number of points top plot in each raytracing domain.\n\
+-b	bottomDepth	 15	Maximum turning depth for rays.\n\
+-v	velReduce	  7	Velocity to use to reduce traveltime. Value of 0 yields full traveltime.\n\
+-o	outputFile		Write to outputFile. If not specified name is generated form option valuses.\n\
+-D				Raytrace for depth pases.\n\
+-r	n dz			Velocity function will be resampled before use, using cubic splines.\n\
+-X	xEnd xCount		Use iteration to output values for evently spaces distance values.\n\
+";
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -143,6 +158,7 @@ int main(int ac , char **av )
 		case 't' :	tableFile = optarg ; break ;
 		case 'D' :	depthPhaseFlag = 1 ; break ;
 		case 'X' : 	xEnd = atof(optarg) ; xCount =  atof(av[optind++]) ; break ;
+		default : printf(selfDoc) ; break ;
 	}}
 	if( sourceDepth <= 0.0 ) depthPhaseFlag = 0 ;
 	if( 0 == *outputName )  makeOutputName(ac,*av) ; 
