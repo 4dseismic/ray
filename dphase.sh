@@ -6,6 +6,9 @@ o=$n.svg
 t=`echo $n | tr '_' ' ' `
 v=silp.vel
 
+d=1.500
+i=16.0
+
 cat <<EOF > gplot.input
 set terminal svg size 1400,600 font ",24"
 set output "$o"

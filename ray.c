@@ -5,7 +5,7 @@
 #include "ray.h"
 
 double zBottom ; 
-int shLogLevel = 5 ;
+int shLogLevel = 3 ;
 void  rLog( int level, char *s1 , void *p )
 {
         char buff[200] ;
@@ -14,12 +14,10 @@ void  rLog( int level, char *s1 , void *p )
         if( level > shLogLevel ) return ;
         time(&t) ;
         (void) strftime(buff,30,"%d/%m %H:%M:%S",gmtime(&t)) ;
-/*        lf = fopen(logFile,"a") ;  */
 	lf = stderr ;
         fprintf(lf,"rayt, %s l=%d: ",buff,level) ;
         fprintf(lf,s1,p) ;
         fprintf(lf,"\n") ;
-        fclose(lf) ;
         if( level < 0 ) abort() ;
         if( level < 1 ) exit(-1) ;
 }
@@ -194,16 +192,27 @@ double rtrace( double v1,double v2, double z, double p, double *x, double *t )
 	double si1, si2, co1, co2 ;
 	double z0, r, b, b1 ;
 	double zin, v2in,zturn ;
-	if( z <= 0.0 ) 	{ *t = 0.0, *x =0.0 ; return(0.0) ; }
-	if( v1 == v2 ) 	{ *t = 0.0, *x =0.0 ; return(0.0) ; }
-	if( p == 0 ) {
+	if( z <= 0.0 ) 	{ *t = 0.0, *x =0.0 ; 
+		rLog(3, "rtrace returns due to z <= 0.0" , NULL) ;
+		return(0.0) ; }
+	si1 = p*v1 ;
+	if( si1 > 1.0 )	{ *t = 0.0, *x =0.0 ; 
+		rLog(3, "rtrace returns due to sin > 1" , NULL) ;
+		return(z) ; }
+	if( p == 0 ) {    /* vertical ray */
 		*t = z*log(v2/v1)/(v2-v1) ;
 		*x = 0.0 ;
+		rLog(3, "rtrace returns for vertical ray" , NULL) ;
 		return 0.0 ;
 	}
-	si1 = p*v1 ;
-	if( si1 > 1.0 )	{ *t = 0.0, *x =0.0 ; return(z) ; }
 	si2 = p*v2 ;
+	if( v1 == v2 ) 	{  /* constant velocity */
+		co1 = sqrt( 1.0 - si1 * si1 ) ;
+		*x = z * si1 / co1 ;
+		*t = z /( co1 * v1 ) ;
+		rLog(3, "rtrace returns for constant velocity" , NULL) ;
+		return(0.0) ; 
+	}
 	zturn = 0.0 ;
 	if ( si2 > 1.0 ) { 
 		v2in = v2 ;
@@ -314,6 +323,7 @@ double traceUD( Mode mode, double p, double zSource, VelModel *m, double *tTime)
 	double timeUp,xUp, timeDown,xDown,xTotal ;
 	zBottom = 0.0 ;
 	xUp = 0.0 ; timeUp = 0.0 ;
+	rLog(5,"enter TraceUD, mode=%d", (void *)mode) ;
 	if( mode != Surface ) {
 		vSource = velZ( zSource, m, &iLayer) ;
 		zold = zSource ;
@@ -335,7 +345,7 @@ double traceUD( Mode mode, double p, double zSource, VelModel *m, double *tTime)
 		}
 		if( mode == RayUp ) {
 			*tTime = timeUp ;
-	                if( shLogLevel > 7 ) 
+	                if( shLogLevel > 5 ) 
                            fprintf(stderr,"Leaving traceUD(%d,1/%8.3f,%8.3f) returning %9.3f\n",
 		           mode,1.0/p,zSource,xUp) ;
 			return( xUp ) ;
@@ -348,7 +358,7 @@ double traceUD( Mode mode, double p, double zSource, VelModel *m, double *tTime)
 		iLayer = 1 ;
 	}
 	timeDown = 0.0 ; xDown = 0.0 ;
-	if( shLogLevel > 7 ) fprintf(stderr,"iLayer=%d m->nVel=%d\n",iLayer,m->nVel) ;
+	if( shLogLevel > 5 ) fprintf(stderr,"iLayer=%d m->nVel=%d\n",iLayer,m->nVel) ;
 	for( i = iLayer ; i < m->nVel ; i++) {
 /*		printf("%d ",i) ; */
 		z = m->z[i];
@@ -360,8 +370,8 @@ double traceUD( Mode mode, double p, double zSource, VelModel *m, double *tTime)
 		timeDown += t ;
 		xDown    += x ;
 		zold = z ; vold = v ;
-		if(shLogLevel>7) fprintf(stderr,"zz =%8.2e\n",zz) ;
-		if(( zz > 0.0 )|| (t == 0.0 ) ) break ;
+		if(shLogLevel>5) fprintf(stderr,"zz =%8.2e t=%8.2e x=%8.2e\n",zz,t,x) ;
+		if( zz > 0.0 ) break ; 
 	}
 	zBottom = zold - zz ;
 #ifdef PLOTRAY
@@ -373,7 +383,7 @@ double traceUD( Mode mode, double p, double zSource, VelModel *m, double *tTime)
 		*tTime += timeUp + timeUp ;
 		xTotal += xUp + xUp ;
 	}
-	if( shLogLevel > 7 ) fprintf(stderr,"Leaving traceUD(%d,1/%8.3f,%8.3f) returning %9.3f\n",
+	if( shLogLevel > 5 ) fprintf(stderr,"Leaving traceUD(%d,1/%8.3f,%8.3f) returning %9.3f\n",
 		mode,1.0/p,zSource,xTotal) ;
 	return( xTotal ) ;
 }
@@ -384,7 +394,7 @@ double timeFromDist( VelModel *m, double x, double z, double *p, double *dtdx, d
 	double xOld,xNew,xx,pp,pNew,pOld,slope,tOld ;
 	double dxdt ;
 	pMax = 1.0/velZ(z,m,&ii) ;
-	if(shLogLevel > 6 )fprintf(stderr,"vSource=%8.3f ii=%d\n",1.0/pMax,ii) ;
+	if(shLogLevel > 5 )fprintf(stderr,"vSource=%8.3f ii=%d\n",1.0/pMax,ii) ;
 	if( z <= 0.0 ) xPMax = 0.0 ;
 	else xPMax = traceUD(RayUp, pMax, z, m, &tt) ;
 	if( x > xPMax ) {
