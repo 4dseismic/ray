@@ -52,7 +52,7 @@ void doIt()
 	ff = fopen(rayFile,"w") ;
 	rp = rayPoints ;
 	p = 1.0/velZ(zBottom,&m,&il) ;
-	x = traceUD(SURFACE,p,zSource,&m,&t) ;
+	x = traceUD(Surface,p,zSource,&m,&t) ;
 	for ( i =  0 ; i < nRaypoints ; i++ ) {
 		fprintf(ff,"%10.3f %10.3f\n",rp->x,rp->z)  ;
 		rp++ ;

@@ -59,3 +59,8 @@ void printPhases( Phase *p, int n  ) ;
 void printSol( Solution *p, int n ) ;
 
 void  golubC(double *a, double *x, double *b, int m, int n) ;
+
+/* azimuth.c */
+double azAzimuth( double la1, double la2, double dlon ) ;
+/* return azimuth, all values are in degrees */
+

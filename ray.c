@@ -403,7 +403,6 @@ double timeFromDist( VelModel *m, double x, double z, double *p, double *dtdx, d
 		p0 = pMax ;
 		for( j = ii ; j < m->nVel ; j++) {
 			p1 = 1.0/m->v[j] ;
-			p1 = p1*0.9999999 ; 
 			x1 = traceUD(RayDown,p1,z,m,&tt) ;
 			if( shLogLevel > 5 )
 			   printf("x1=%10.4f p1=%8.4f vel=%10.4f j=%d \n",x1,p1,1.0/p1,j) ;
@@ -417,7 +416,10 @@ double timeFromDist( VelModel *m, double x, double z, double *p, double *dtdx, d
 		x1 = xPMax ; p1 = pMax ;
 	}
 	xOld = x0 ; pOld = p0 ;
-	xNew = x1 ; pNew = p1 ;
+	pNew = p0 + 0.99*(p1 - p0 ) ;
+	pOld = p0 + 0.01*(p1 - p0 ) ;
+	xOld = traceUD(mode,pOld,z,m,&tt) ;
+	xNew = traceUD(mode,pNew,z,m,&tt) ;
 	if(shLogLevel > 4 ) fprintf(stderr,"x0=%10.3f x=%10.3f x1=%10.3f\n",x0,x,x1) ;
 	for( iIter = 0 ; iIter < 35 ; iIter++) {
 		slope = ( pNew - pOld )/( xNew - xOld ) ;

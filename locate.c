@@ -22,7 +22,7 @@ void insertRow( double *x, double *a, int i, int m, int n, double weight )
 }
 int  locate( Solution *sol, Phase *pp )
 {
-#define MAXPHASES 30 
+#define MAXPHASES 60 
 	double x[4],x0[4],b[MAXPHASES],a[4*MAXPHASES] ;
 	double dx[4], dxtest[4] ;
 	double tt,dlon,distance,residual,sumP,sumS,stdP,stdS ;
@@ -47,11 +47,12 @@ int  locate( Solution *sol, Phase *pp )
 	x0[1] = sol->lat ;    /* latitude, degrees */
 	x0[2] = sol->lon ;	/* longitude, degrees */
 	x0[3] = sol->depth;	/* depth, km */
-	dz = 0.01 ;
+	x0[3] = 7.0 ;
+	dz = 0.005 ;
 	km2lat = 6391*M_PI/180.0 ;
 	km2lon = km2lat * cos(sol->lat * M_PI/180.0 ) ;
 	printModel("x0",x0) ;
-	for ( iter = 0 ; iter < 25 ; iter++) {
+	for ( iter = 0 ; iter < 35 ; iter++) {
 	  sumP = 0.0 ; sumS = 0.0 ; ns = 0 ;
 	  for( i = 0 ; i < np ; i++ ) {
 		p = pp+i ;
@@ -89,7 +90,8 @@ int  locate( Solution *sol, Phase *pp )
 	   azi = atan2(kmn,kme) * 180.0/M_PI ; if( azi < 0 ) azi += 180 ;
 	   printModel(" x ",x) ;
 	   damp = 20.0/lenx ;
-#define DAMP 0.45
+	   damp = 0.3/lenx ;
+#define DAMP 0.39
 	   if(damp > DAMP) damp = DAMP ;
 	   for( j = 0 ; j < 4 ; j++) x0[j] += damp*x[j] ;
 	   printModel(" x0",x0) ;
@@ -107,20 +109,23 @@ char *sModel = "sils.vel" ;
 char *phaseFile = "../geysir/phase.dat" ;
 char *solFile = "../geysir/ctloc2" ;
 
-doit()
+doit( int skip )
 {
 	Phase *phases, *ip ;
 	Solution *location, *lp ;
 	int nPhases,nLoc ,i,j ;
 	long long index,i2 ;
+	double dist,azi ;
 	Station *sp ;
 	VelModel jm ;
 	initVelModel(20,&jm ) ;
-	readVelModel(pModel,&jm) ; mp = resampleVelModel(&jm,0.10,105) ;
-	readVelModel(sModel,&jm) ; ms = resampleVelModel(&jm,0.10,105) ;
+	readVelModel(pModel,&jm) ; mp = resampleVelModel(&jm,1.00,50) ;
+	readVelModel(sModel,&jm) ; ms = resampleVelModel(&jm,1.00,50) ;
+/*	initVelModel(20,&mp) ; readVelModel(pModel,&mp) ;
+	initVelModel(20,&ms) ; readVelModel(pModel,&ms) ; */
 	nPhases = readPhases(phaseFile,&phases ) ;
 	nLoc = readCtloc(solFile,&location) ;
-	lp = location + 29 ;
+	lp = location + skip ;
 	index = lp->index ;
 	printf("index=%ld\n",index) ;
 	ip = phases ;
@@ -128,18 +133,24 @@ doit()
 	j = locate( lp, ip ) ;
 	while( ip->index == index ) {
 		sp = ip->statP ;
-		printf("%ld %s %10.6f %10.6f\n",ip->index,sp->name,ip->pTime,ip->weight ) ;
+		dist = sDistance(sp->lat,lp->lat,sp->lon-lp->lon ) ;
+		azi = azAzimuth(lp->lat,sp->lat,sp->lon-lp->lon ) ;
+		printf("%ld %s %c %10.6f %10.6f dist =%7.2f azi =%8.2f\n",ip->index,sp->name,ip->type,ip->pTime,ip->weight,dist,azi ) ;
 		ip++ ;
 	}
 	printf("%d phases\n",ip-phases ) ;
 }
 int main(int ac, char **av) {
 	int cc,n ;
+	extern char *optarg ;
+	extern int optind ;
 	feenableexcept(FE_INVALID) ; 
 	shLogLevel = 2 ;
-	while( EOF != ( cc = getopt(ac,av,"l"))) {
+	while( EOF != ( cc = getopt(ac,av,"p:s:l:"))) {
 	    switch(cc) {
-	    case 'l' : doit() ;
+	    case 'l' : doit(atoi(optarg)) ; break ;
+	    case 'p' : phaseFile = optarg ; break ;
+	    case 's' : solFile = optarg ; break ;
 	}}
 	return 0 ;
 }

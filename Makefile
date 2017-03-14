@@ -1,7 +1,7 @@
 
 CFLAGS=-g
 
-top : vf
+top : tl
 
 vf : velfit.o
 
@@ -25,7 +25,7 @@ phases : $P phases.c
 	cc -DTEST phases.c $P -o phases -lproj -lm
 
 tl : locate
-	locate  -l
+	locate  -l | less
 
 R =  ray.o readdata.o distance.o stations.o phases.o reltest.o
 
@@ -34,7 +34,7 @@ trt : reltest
 reltest : $R
 	cc -g -o reltest $R -lproj -lm
 
-L = $P phases.o golubc.o
+L = $P phases.o golubc.o azimuth.o proj.o
 locate : $L locate.c
 	cc -o locate  -DTEST $L locate.c -lproj -lm
 
@@ -57,7 +57,12 @@ t22 : travelt
 t14 : travelt
 	travelt -n 0 -l 9  -x 14.6 -d 5.6 > jtest  2>&1
 
+I= rayplot travelt
+
+install : $I
+	cp $I ../../bin
+
 clean : 
-	rm *.o travelt ray
+	rm *.o $I
 
 
