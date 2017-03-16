@@ -91,7 +91,7 @@ int  locate( Solution *sol, Phase *pp )
 	   printModel(" x ",x) ;
 	   damp = 20.0/lenx ;
 	   damp = 0.3/lenx ;
-#define DAMP 0.39
+#define DAMP 0.49
 	   if(damp > DAMP) damp = DAMP ;
 	   for( j = 0 ; j < 4 ; j++) x0[j] += damp*x[j] ;
 	   printModel(" x0",x0) ;
@@ -119,10 +119,10 @@ doit( int skip )
 	Station *sp ;
 	VelModel jm ;
 	initVelModel(20,&jm ) ;
-	readVelModel(pModel,&jm) ; mp = resampleVelModel(&jm,1.00,50) ;
-	readVelModel(sModel,&jm) ; ms = resampleVelModel(&jm,1.00,50) ;
-/*	initVelModel(20,&mp) ; readVelModel(pModel,&mp) ;
-	initVelModel(20,&ms) ; readVelModel(pModel,&ms) ; */
+/* 	readVelModel(pModel,&jm) ; mp = resampleVelModel(&jm,1.00,50) ;
+	readVelModel(sModel,&jm) ; ms = resampleVelModel(&jm,1.00,50) ; */
+	initVelModel(20,&mp) ; readVelModel(pModel,&mp) ;
+	initVelModel(20,&ms) ; readVelModel(sModel,&ms) ; 
 	nPhases = readPhases(phaseFile,&phases ) ;
 	nLoc = readCtloc(solFile,&location) ;
 	lp = location + skip ;
