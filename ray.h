@@ -64,3 +64,10 @@ void  golubC(double *a, double *x, double *b, int m, int n) ;
 double azAzimuth( double la1, double la2, double dlon ) ;
 /* return azimuth, all values are in degrees */
 
+/* velfit.c */
+#define MAXPAR 45
+extern double vFNModelP[MAXPAR],  vFNModelS[MAXPAR] ;
+
+void vFInit() ;
+double vFtimeFromXZ(char type, double x, double z, double *dtdx, double *dtdz) ;
+

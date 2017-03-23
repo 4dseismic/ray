@@ -3,7 +3,14 @@ CFLAGS=-g
 
 top : tl
 
-vf : velfit.o
+vf : velfit
+	velfit
+F= velfit.c ray.o golubc.o 
+velfit : $F 
+	cc -o velfit -DTEST  $F -lm
+	
+
+azimuth.o distance.o locate.o phases.o ray.o rayplot.o reltest.o stations.o travelt.o velfit.o : ray.h
 
 rayplott : rayplot
 	rayplot
@@ -34,13 +41,12 @@ trt : reltest
 reltest : $R
 	cc -g -o reltest $R -lproj -lm
 
-L = $P phases.o golubc.o azimuth.o proj.o
+L = $P phases.o golubc.o azimuth.o proj.o velfit.o
 locate : $L locate.c
-	cc -o locate  -DTEST $L locate.c -lproj -lm
+	cc -g -o locate  -DTEST $L locate.c -lproj -lm
 
 T = travelt.o ray.o
 
-$T velfit.o : ray.h
 
 travelt : $T
 	cc ${CFLAGS}  -o travelt $T -lm

@@ -9,6 +9,8 @@
 #include <math.h>
 #include "ray.h"
 
+/* #define MAXPAR 45 */
+double vFNModelP[MAXPAR],  vFNModelS[MAXPAR] ;
 int vFNPar, vFOrder ;
 typedef enum { poly, ft} FitType ;
 FitType vFType ;
@@ -27,18 +29,25 @@ int nVList ;
 
 char *velFile = "silp.vel" ;
 
-void printModel( char *text, double *x, int n ) 
+void vFPrintModel( char *text, double *x, int n ) 
 {
 	int i ;
-	printf("Model %s ",text ) ;
+	printf("Model %s vFNPar=%d vFOrder=%d\n",text,vFNPar,vFOrder ) ;
 	for( i = 0 ; i < n ; i++ ) printf("%9.4f ",x[i]) ;
 	printf("\n") ;
 }
-void insertRow( double *x, double *a, int i, int m, int n, double weight )
+void printModelE( char *text, double *x, int n ) 
+{
+	int i ;
+	printf("Model %s vFNPar=%d vFOrder=%d\n",text,vFNPar,vFOrder ) ;
+	for( i = 0 ; i < n ; i++ ) printf("%20.15e ",x[i]) ;
+	printf("\n") ;
+}
+void vFInsertRow( double *x, double *a, int i, int m, int n, double weight )
 {
 	while(n--) { a[i] = weight * *x++ ; i += m ; }
 }
-void travelTTable()
+void travelTTable( char * vfile)
 {
 	VelModel vm,jm ;
 	int ix,iz ;
@@ -48,7 +57,7 @@ void travelTTable()
 	nVList = nX*nZ ;
 	vList = ( TimePoint *) malloc( nVList * sizeof(TimePoint) ) ;
 	tp = vList ;
-	readVelModel(velFile,&jm) ;
+	readVelModel(vfile,&jm) ;
 	vm = resampleVelModel(&jm,0.25,50) ;
 	dz = zMax/nZ ; dx = xMax/nX ;
 	for( ix = 0 ; ix < nX ; ix++ ) {
@@ -140,6 +149,12 @@ double timeFuncF( double x, double z, double *c, double *d )
 	for( j = 0 ; j < vFNPar ; j++) { sum += c[j] * d[j] ; }
 	return sum ;
 }
+/*
+double xfac = 0.02 ;
+double zfac = 0.20 ;
+*/
+double xfac = 1.0 ;
+double zfac = 1.0 ;
 double timeFuncP( double x, double z, double *c, double *d ) 
 {
 /* 2d polonomial  nPar = order * (order+1)/2  */
@@ -147,16 +162,18 @@ double timeFuncP( double x, double z, double *c, double *d )
 	int j,i,ij ;
 	ij = 0 ;
 	zz = 1.0 ; 
+	x *= xfac ;
+	z *= xfac ;
 	for( i = 0 ; i < vFOrder ; i++ ) {
 		xx = 1.0 ;
 		for( j = 0 ; j < vFOrder-i ; j++ ) {
 			d[ij++] = xx*zz ;
-			xx *= x*0.02 ;
+			xx *= x ;
 		}
-		zz *= z*0.20 ;
+		zz *= z ;
 	}
 	sum = 0.0 ;
-	for( j = 0 ; j < vFNPar ; j++) { sum += c[j] * d[j] ; }
+	for( j = 0 ; j < vFNPar ; j++) { sum += c[j] * d[j] ; } 
 	return sum ;
 }
 double timeFunc(double x, double z, double *c, double *d ) 
@@ -165,11 +182,41 @@ double timeFunc(double x, double z, double *c, double *d )
 	if( vFType == ft ) return timeFuncF( x, z, c, d ) ;
 /*	return timeFunc4( x, z, c, d ) ; */
 }
-void linearFit()
-#define MAXPAR 45
+double vFtimeFromXZ(char type, double x, double z, double *dtdx, double *dtdz)
+{
+	double sum, sumdx, sumdz ;
+	double xx,zz,xx0,zz0 ;
+	int j,i,ij ;
+	double f ;
+	double *model ;
+	if( type == 'P' ) model = vFNModelP ;
+	else model = vFNModelS ;
+	sum = 0.0 ; sumdx = 0.0 ; sumdz = 0.0 ;
+	ij = 0 ;
+	zz = 1.0 ; zz0 = 1.0 ;
+	x *= xfac ;
+	z *= zfac ;
+	for( i = 0 ; i < vFOrder ; i++ ) {
+		xx = 1.0  ;  xx0 = 1.0 ; 
+		for( j = 0 ; j < vFOrder-i ; j++ ) {
+			f = model[ij++] ;
+			sum += f*xx*zz ;
+			sumdx += j*f*xx0*zz ;
+			sumdz += i*f*xx*zz0 ;
+			xx0 = xx ;
+			xx *= x ;
+		}
+		zz0 = zz ;
+		zz *= z ;
+	}
+	*dtdx = sumdx*xfac ;
+	*dtdz = sumdz*zfac ;
+	return sum ;
+}
+void linearFit(double *c)
 {
 	int i,m ;
-	double *a, *b,c[MAXPAR],d[MAXPAR],dc[MAXPAR] ;
+	double *a, *b,d[MAXPAR],dc[MAXPAR] ;
 	double t,w,sum ;
 	TimePoint *tp ;
 /*	timeFuncSet(poly,29,0.0,0.0) ; */
@@ -181,22 +228,30 @@ void linearFit()
 	w = 1.0 ;
 	for( i = 0 ; i < m ; i++) {
 		t = timeFunc( tp->x, tp->z,c,d) ;
-		insertRow(d,a,i,m,vFNPar,w) ;
+		vFInsertRow(d,a,i,m,vFNPar,w) ;
 		b[i] = w*tp->t ;
 		tp++ ;
 	}
 	golubC(a,c,b,m,vFNPar) ;
-	printModel("c",c,vFNPar) ;
+	vFPrintModel("c",c,vFNPar) ;
 	tp = vList ;
 	sum = 0 ; 
 	for( i = 0 ; i < m ; i++) {
-		tp->tfit = timeFunc( tp->x, tp->z, c,d) ;
+		tp->tfit = timeFunc( tp->x, tp->z,c,d) ;
 		t = tp->t - tp->tfit ;
 		sum += t*t ;
 		tp++ ;
 	}
 	printf("rms deviation: %8.3f\n", sqrt(sum/m) ) ;
 }
+void vFInit()
+{
+	travelTTable("silp.vel") ;
+	linearFit(vFNModelP) ;
+	travelTTable("sils.vel") ;
+	linearFit(vFNModelS) ;
+}
+#ifdef TEST
 int main(int ac, char **av) {
 	int cc,n ;
 	feenableexcept(FE_INVALID) ; 
@@ -204,8 +259,8 @@ int main(int ac, char **av) {
 	while( EOF != ( cc = getopt(ac,av,"f"))) {
 	    switch(cc) {
 	}}
-	travelTTable() ;
-	linearFit() ;
+	vFInit() ;
 	dumpTimeTable() ;
 	return 0 ;
 }
+#endif

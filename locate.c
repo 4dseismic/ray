@@ -10,6 +10,8 @@
 #include <math.h>
 #include "ray.h"
 
+int rayTrace = 1 ;
+
 VelModel mp,ms ;
 void printModel( char *text, double *x ) 
 {
@@ -20,9 +22,22 @@ void insertRow( double *x, double *a, int i, int m, int n, double weight )
 {
 	while(n--) { a[i] = weight * *x++ ; i += m ; }
 }
+void testFit(char type, double x, double z, double t, double dx, double dz)
+{
+	double tt,dtdx,dtdz ;
+	static	int count ;
+/*
+	double *model ;
+	if( type == 'P' ) model = vFNModelP ;
+	else model = vFNModelS ;
+*/
+	tt = vFtimeFromXZ(type,x,z,&dtdx,&dtdz) ;
+	if( (count % 400) == 0 )fprintf(stderr,"xz = %10.4f %10.4f tt= %10.4f %10.4f dx %10.4f %10.4f dz %10.4f %10.4f\n"
+		,x,z,t,tt,dtdx,dx,dtdz,dz) ;
+}
 int  locate( Solution *sol, Phase *pp )
 {
-#define MAXPHASES 60 
+	#define MAXPHASES 60 
 	double x[4],x0[4],b[MAXPHASES],a[4*MAXPHASES] ;
 	double dx[4], dxtest[4] ;
 	double tt,dlon,distance,residual,sumP,sumS,stdP,stdS ;
@@ -61,9 +76,12 @@ int  locate( Solution *sol, Phase *pp )
 		if( p->type == 'P' ) vm = &mp ; else vm = &ms ;
 		if( p->type == 'P' ) weight = 1.0 ; else weight = 0.8 ;
 		distance = sDistance(x0[1],s->lat,dlon) ;
-		tt = timeFromDist(vm,distance,x0[3],&rayp,&dtdx,&dxdp) + x0[0] ;
-		ttz = timeFromDist(vm,distance,x0[3]+dz,&rayp,&dtdx,&dxdp) +x0[0] ;
-		dtdz = (ttz-tt)/dz ;
+		if( rayTrace ) { 
+		  tt = timeFromDist(vm,distance,x0[3],&rayp,&dtdx,&dxdp) + x0[0] ;
+		  ttz = timeFromDist(vm,distance,x0[3]+dz,&rayp,&dtdx,&dxdp) +x0[0] ;
+		  dtdz = (ttz-tt)/dz ;
+		} else tt = vFtimeFromXZ(p->type,distance,x0[3],&dtdx,&dtdz) ; 
+/*		testFit(p->type,distance,x0[3],tt,dtdx,dtdz) ;  */
 		dtdla = dtdx * ( x0[1] - s->lat )*km2lat*km2lat /  distance  ;
 		dtdlo = dtdx * ( x0[2] - s->lon )*km2lon*km2lon /  distance  ;
 		dx[0] = 1.0 ; dx[1] = dtdla ; dx[2] = dtdlo ; dx[3] = dtdz ;
@@ -118,11 +136,13 @@ doit( int skip )
 	double dist,azi ;
 	Station *sp ;
 	VelModel jm ;
-	initVelModel(20,&jm ) ;
-/* 	readVelModel(pModel,&jm) ; mp = resampleVelModel(&jm,1.00,50) ;
-	readVelModel(sModel,&jm) ; ms = resampleVelModel(&jm,1.00,50) ; */
-	initVelModel(20,&mp) ; readVelModel(pModel,&mp) ;
-	initVelModel(20,&ms) ; readVelModel(sModel,&ms) ; 
+	if( rayTrace ) {
+	  initVelModel(20,&jm ) ;
+/*  	  readVelModel(pModel,&jm) ; mp = resampleVelModel(&jm,1.00,50) ;
+	  readVelModel(sModel,&jm) ; ms = resampleVelModel(&jm,1.00,50) ; */
+	  initVelModel(20,&mp) ; readVelModel(pModel,&mp) ;
+	  initVelModel(20,&ms) ; readVelModel(sModel,&ms) ; 
+	} else vFInit() ;
 	nPhases = readPhases(phaseFile,&phases ) ;
 	nLoc = readCtloc(solFile,&location) ;
 	lp = location + skip ;
@@ -146,11 +166,12 @@ int main(int ac, char **av) {
 	extern int optind ;
 	feenableexcept(FE_INVALID) ; 
 	shLogLevel = 2 ;
-	while( EOF != ( cc = getopt(ac,av,"p:s:l:"))) {
+	while( EOF != ( cc = getopt(ac,av,"p:s:l:f"))) {
 	    switch(cc) {
 	    case 'l' : doit(atoi(optarg)) ; break ;
 	    case 'p' : phaseFile = optarg ; break ;
 	    case 's' : solFile = optarg ; break ;
+	    case 'f' : rayTrace = 0 ; break ;
 	}}
 	return 0 ;
 }
