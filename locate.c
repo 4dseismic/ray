@@ -11,6 +11,7 @@
 #include "ray.h"
 
 int rayTrace = 1 ;
+double maxDist = 90.0 ;
 
 VelModel mp,ms ;
 void printModel( char *text, double *x ) 
@@ -56,6 +57,13 @@ int  locate( Solution *sol, Phase *pp )
 	p = pp ;
 	while( p->index == sol->index ) p++ ;
 	np = p-pp ;
+	i = np ;
+	while( i-- ) {
+		p=pp+i ;
+		s= p->statP ;
+		distance = sDistance(sol->lat,s->lat,sol->lon - s->lon) ;
+		if(distance > maxDist ) np = i ;
+	}
 	if( np > MAXPHASES ) rLog(1,"locate: more than %d phases", (void*) MAXPHASES ) ;
 	printf("locate: %d phases\n",np) ;
 	x0[0] = 0.0 ;         /* origin time, sec */
@@ -118,6 +126,8 @@ int  locate( Solution *sol, Phase *pp )
 	   printf("iter = %2d  stdP =%9.6f stdS =%9.6f azi=%5.0f lenx=%7.3f damp=%7.2f\n",iter,stdP,stdS,azi,lenx,damp) ;
 	   if( lenx < 0.01 ) break ;
 	}
+	printf("%2d iterations. lenx = %7.3f\n",iter,lenx) ;
+	return np ;
 }
 
 #ifdef TEST
@@ -126,6 +136,8 @@ char *pModel = "silp.vel" ;
 char *sModel = "sils.vel" ;
 char *phaseFile = "../geysir/phase.dat" ;
 char *solFile = "../geysir/ctloc2" ;
+int skipEvents ;
+int nEvents = 1 ;
 
 doit( int skip )
 {
@@ -146,19 +158,22 @@ doit( int skip )
 	nPhases = readPhases(phaseFile,&phases ) ;
 	nLoc = readCtloc(solFile,&location) ;
 	lp = location + skip ;
-	index = lp->index ;
-	printf("index=%ld\n",index) ;
-	ip = phases ;
-	while( ip->index < index ) ip++ ;
-	j = locate( lp, ip ) ;
-	while( ip->index == index ) {
+	while( nEvents--) {
+	  index = lp->index ;
+	  printf("index=%ld\n",index) ;
+	  ip = phases ;
+	  while( ip->index < index ) ip++ ;
+	  j = locate( lp, ip ) ;
+	  while( j-- ) {
 		sp = ip->statP ;
 		dist = sDistance(sp->lat,lp->lat,sp->lon-lp->lon ) ;
 		azi = azAzimuth(lp->lat,sp->lat,sp->lon-lp->lon ) ;
 		printf("%ld %s %c %10.6f %10.6f dist =%7.2f azi =%8.2f\n",ip->index,sp->name,ip->type,ip->pTime,ip->weight,dist,azi ) ;
 		ip++ ;
+	  }
+	  printf("%d phases\n",ip-phases ) ;
+	  lp++ ;
 	}
-	printf("%d phases\n",ip-phases ) ;
 }
 int main(int ac, char **av) {
 	int cc,n ;
@@ -166,13 +181,15 @@ int main(int ac, char **av) {
 	extern int optind ;
 	feenableexcept(FE_INVALID) ; 
 	shLogLevel = 2 ;
-	while( EOF != ( cc = getopt(ac,av,"p:s:l:f"))) {
+	while( EOF != ( cc = getopt(ac,av,"l:p:s:fn:"))) {
 	    switch(cc) {
-	    case 'l' : doit(atoi(optarg)) ; break ;
+	    case 'l' : skipEvents = atoi(optarg) ; break ;
 	    case 'p' : phaseFile = optarg ; break ;
 	    case 's' : solFile = optarg ; break ;
 	    case 'f' : rayTrace = 0 ; break ;
+	    case 'n' : nEvents = atoi(optarg) ; break ;
 	}}
+	doit(skipEvents) ;
 	return 0 ;
 }
 #endif
