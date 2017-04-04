@@ -11,7 +11,6 @@
 #include "ray.h"
 
 int rayTrace = 1 ;
-double maxDist = 90.0 ;
 
 VelModel mp,ms ;
 void printModel( char *text, double *x ) 
@@ -62,7 +61,7 @@ int  locate( Solution *sol, Phase *pp )
 		p=pp+i ;
 		s= p->statP ;
 		distance = sDistance(sol->lat,s->lat,sol->lon - s->lon) ;
-		if(distance > maxDist ) np = i ;
+		if(distance > vFXMax * 0.9 ) np = i ;
 	}
 	if( np > MAXPHASES ) rLog(1,"locate: more than %d phases", (void*) MAXPHASES ) ;
 	printf("locate: %d phases\n",np) ;
@@ -70,7 +69,6 @@ int  locate( Solution *sol, Phase *pp )
 	x0[1] = sol->lat ;    /* latitude, degrees */
 	x0[2] = sol->lon ;	/* longitude, degrees */
 	x0[3] = sol->depth;	/* depth, km */
-	x0[3] = 7.0 ;
 	dz = 0.005 ;
 	km2lat = 6391*M_PI/180.0 ;
 	km2lon = km2lat * cos(sol->lat * M_PI/180.0 ) ;
@@ -181,12 +179,13 @@ int main(int ac, char **av) {
 	extern int optind ;
 	feenableexcept(FE_INVALID) ; 
 	shLogLevel = 2 ;
-	while( EOF != ( cc = getopt(ac,av,"l:p:s:fn:"))) {
+	while( EOF != ( cc = getopt(ac,av,"l:p:s:fn:X:"))) {
 	    switch(cc) {
 	    case 'l' : skipEvents = atoi(optarg) ; break ;
 	    case 'p' : phaseFile = optarg ; break ;
 	    case 's' : solFile = optarg ; break ;
 	    case 'f' : rayTrace = 0 ; break ;
+	    case 'X' : vFXMax = atof(optarg) ; break ;
 	    case 'n' : nEvents = atoi(optarg) ; break ;
 	}}
 	doit(skipEvents) ;

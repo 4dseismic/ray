@@ -67,6 +67,7 @@ double azAzimuth( double la1, double la2, double dlon ) ;
 /* velfit.c */
 #define MAXPAR 45
 extern double vFNModelP[MAXPAR],  vFNModelS[MAXPAR] ;
+extern double vFXMax, vFZMax ;
 
 void vFInit() ;
 double vFtimeFromXZ(char type, double x, double z, double *dtdx, double *dtdz) ;

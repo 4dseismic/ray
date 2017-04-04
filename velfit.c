@@ -16,8 +16,8 @@ typedef enum { poly, ft} FitType ;
 FitType vFType ;
 double vFdfx , vFdfz ;
 
-double xMax = 100.0 ;
-double zMax = 15.0  ;
+double vFXMax = 100.0 ;
+double vFZMax = 15.0  ;
 int nX = 50 ;
 int nZ = 20 ;
 
@@ -59,7 +59,7 @@ void travelTTable( char * vfile)
 	tp = vList ;
 	readVelModel(vfile,&jm) ;
 	vm = resampleVelModel(&jm,0.25,50) ;
-	dz = zMax/nZ ; dx = xMax/nX ;
+	dz = vFZMax/nZ ; dx = vFXMax/nX ;
 	for( ix = 0 ; ix < nX ; ix++ ) {
 	    x = (0.5 + ix) * dx ;
 	    for( iz = 0 ; iz < nZ ; iz++) {
@@ -97,7 +97,7 @@ double timeFunc4( double x, double z, double *c, double *d )
 	d[4] = 1.0/(x+2.5) ;
 	d[5] = 1.0/(z+3.0) ;
 	d[6] = 1.0/(x+z+3.0) ;
-	d[7] = 1.0/(x-z+zMax+4.0) ;
+	d[7] = 1.0/(x-z + vFZMax+4.0) ;
 	sum = 0.0 ;
 	for( j = 0 ; j < vFNPar ; j++) { sum += c[j] * d[j] ; }
 	return sum ;
