@@ -32,7 +32,7 @@ phases : $P phases.c
 	cc -DTEST phases.c $P -o phases -lproj -lm
 
 tl : locate
-	locate  -l | less
+	locate
 
 R =  ray.o readdata.o distance.o stations.o phases.o reltest.o
 
@@ -44,6 +44,10 @@ reltest : $R
 L = $P phases.o golubc.o azimuth.o proj.o velfit.o
 locate : $L locate.c
 	cc -g -o locate  -DTEST $L locate.c -lproj -lm
+
+M =  minvel.o locate.o $L
+minvel : $M 
+	cc  $M -o minvel -lproj -lm
 
 T = travelt.o ray.o
 
