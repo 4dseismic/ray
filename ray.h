@@ -24,6 +24,10 @@ typedef struct {
 	double lat,lon,depth, timeShift ;
 	Phase *phase ;
 	int nPhase ;
+	int nP,nS ;
+	int nIter ;
+	double sumP,sumS ;
+	double length ;
 } Solution ;
 typedef struct { double x,z ; } DepthPoint ;
 typedef enum { RayUp, RayDown, Surface, DepthPhase } Mode ;
@@ -75,12 +79,6 @@ void vFInit() ;
 double vFtimeFromXZ(char type, double x, double z, double *dtdx, double *dtdz) ;
 
 /* locate.c */
-typedef struct {
-	int nP,nS ;
-	int nIter ;
-	double sumP,sumS ;
-	double length ;
-} LocateStatus ;
 extern int rayTrace ;
-int  locate( Solution *sol, Phase *pp, LocateStatus *stat ) ;
+int  locate( Solution *sol, Phase *pp ) ;
 

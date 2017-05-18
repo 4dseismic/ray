@@ -35,7 +35,7 @@ void testFit(char type, double x, double z, double t, double dx, double dz)
 	if( (count % 400) == 0 )fprintf(stderr,"xz = %10.4f %10.4f tt= %10.4f %10.4f dx %10.4f %10.4f dz %10.4f %10.4f\n"
 		,x,z,t,tt,dtdx,dx,dtdz,dz) ;
 }
-int  locate( Solution *sol, Phase *pp, LocateStatus *stat )
+int  locate( Solution *sol, Phase *pp )
 {
 	#define MAXPHASES 60 
 	double x[4],x0[4],b[MAXPHASES],a[4*MAXPHASES] ;
@@ -115,23 +115,23 @@ int  locate( Solution *sol, Phase *pp, LocateStatus *stat )
 #define DAMP 0.49
 	   if(damp > DAMP) damp = DAMP ;
 	   for( j = 0 ; j < 4 ; j++) x0[j] += damp*x[j] ;
-	   if(stat->nIter == 1 )  {
+	   if(sol->nIter == 1 )  {
 	  	 printModel(" x ",x) ;
 		 printModel(" x0",x0) ;
 	   }
 	   stdP = sqrt(sumP/(np-ns)) ;
 	   stdS = sqrt(sumS/ns) ;
-	   if(stat->nIter == 1 ) 
+	   if(sol->nIter == 1 ) 
 	     printf("iter = %2d  stdP =%9.6f stdS =%9.6f azi=%5.0f lenx=%7.3f damp=%7.2f\n",iter,stdP,stdS,azi,lenx,damp) ;
 	   if( lenx < 0.01 ) break ;
 	}
-	stat->nP = np - ns ;
-	stat->nS = ns ;
-	stat->nIter = iter ;
-	stat->sumP = sumP ;
-	stat->sumS = sumS ;
-	stat->length = lenx ;
-	if( stat->nIter == 1 ) printf("%2d iterations. lenx = %7.3f\n",iter,lenx) ;
+	sol->nP = np - ns ;
+	sol->nS = ns ;
+	sol->nIter = iter ;
+	sol->sumP = sumP ;
+	sol->sumS = sumS ;
+	sol->length = lenx ;
+	if( sol->nIter == 1 ) printf("%2d iterations. lenx = %7.3f\n",iter,lenx) ;
 	return np ;
 }
 
@@ -153,8 +153,7 @@ doit( int skip )
 	double dist,azi ;
 	Station *sp ;
 	VelModel jm ;
-	LocateStatus status ;
-	status.nIter = 0 ;
+/*	LocateStatus status ; */
 	if( rayTrace ) {
 	  initVelModel(20,&jm ) ;
 /*  	  readVelModel(pModel,&jm) ; mp = resampleVelModel(&jm,1.00,50) ;
@@ -165,12 +164,13 @@ doit( int skip )
 	nPhases = readPhases(phaseFile,&phases ) ;
 	nLoc = readCtloc(solFile,&location) ;
 	lp = location + skip ;
+	lp->nIter = 0 ;
 	while( nEvents--) {
 	  index = lp->index ;
 	  printf("index=%ld\n",index) ;
 	  ip = phases ;
 	  while( ip->index < index ) ip++ ;
-	  j = locate( lp, ip, &status ) ;
+	  j = locate( lp, ip) ;
 	  while( j-- ) {
 		sp = ip->statP ;
 		dist = sDistance(sp->lat,lp->lat,sp->lon-lp->lon ) ;
