@@ -10,6 +10,7 @@
 #include "ray.h"
 
 /* #define MAXPAR 45 */
+extern VelModel mp,ms ;
 double vFNModelP[MAXPAR],  vFNModelS[MAXPAR] ;
 int vFNPar, vFOrder ;
 typedef enum { poly, ft} FitType ;
@@ -21,7 +22,7 @@ double vFZMax = 15.0  ;
 int nX = 50 ;
 int nZ = 20 ;
 
-double dfreqz, dfreqx ;
+double dfreqz, dfreqx 	;
 
 typedef struct { double x,z,t,tfit ; } TimePoint ;
 TimePoint *vList ;
@@ -55,10 +56,32 @@ void travelTTable( char * vfile)
 	TimePoint *tp ;
 	initVelModel(20,&jm) ;
 	nVList = nX*nZ ;
-	vList = ( TimePoint *) malloc( nVList * sizeof(TimePoint) ) ;
+	if( NULL == vList ) vList = ( TimePoint *) malloc( nVList * sizeof(TimePoint) ) ;
 	tp = vList ;
 	readVelModel(vfile,&jm) ;
 	vm = resampleVelModel(&jm,0.25,50) ;
+	dz = vFZMax/nZ ; dx = vFXMax/nX ;
+	for( ix = 0 ; ix < nX ; ix++ ) {
+	    x = (0.5 + ix) * dx ;
+	    for( iz = 0 ; iz < nZ ; iz++) {
+		z = (0.5 + iz) * dz ;
+		tp->x = x ; tp->z = z ;
+		tp->t = timeFromDist(&vm,x,z,&p,&dtdx,&dxdp) ;
+		tp++ ;
+	    }
+	}
+}
+void makeTTable( VelModel *vmp )
+{
+	VelModel vm ;
+	int ix,iz ;
+	double x,z,dx,dz,t,dtdx,p,dxdp ;
+	TimePoint *tp ;
+	if(shLogLevel > 5 )printf("entering makeTTable, v[0]= %10.4f\n",vmp->v[0] ) ;
+	nVList = nX*nZ ;
+	if( NULL == vList ) vList = ( TimePoint *) malloc( nVList * sizeof(TimePoint) ) ;
+	tp = vList ;
+	vm = resampleVelModel(vmp,0.25,50) ;
 	dz = vFZMax/nZ ; dx = vFXMax/nX ;
 	for( ix = 0 ; ix < nX ; ix++ ) {
 	    x = (0.5 + ix) * dx ;
@@ -216,14 +239,17 @@ double vFtimeFromXZ(char type, double x, double z, double *dtdx, double *dtdz)
 void linearFit(double *c)
 {
 	int i,m ;
-	double *a, *b,d[MAXPAR],dc[MAXPAR] ;
+	static double *a, *b ;
+	double d[MAXPAR],dc[MAXPAR] ;
 	double t,w,sum ;
 	TimePoint *tp ;
 /*	timeFuncSet(poly,29,0.0,0.0) ; */
 	timeFuncSet(poly,29,130.0,20.0) ;
 	m = nVList ;
-	a = calloc(MAXPAR*m,sizeof(double)) ;
-	b = calloc(       m,sizeof(double)) ;
+	if( NULL == a ) {
+		a = calloc(MAXPAR*m,sizeof(double)) ;
+		b = calloc(       m,sizeof(double)) ;
+	}
 	tp = vList ;
 	w = 1.0 ;
 	for( i = 0 ; i < m ; i++) {
@@ -233,7 +259,7 @@ void linearFit(double *c)
 		tp++ ;
 	}
 	golubC(a,c,b,m,vFNPar) ;
-	vFPrintModel("c",c,vFNPar) ;
+	if(shLogLevel > 5 ) vFPrintModel("c",c,vFNPar) ;
 	tp = vList ;
 	sum = 0 ; 
 	for( i = 0 ; i < m ; i++) {
@@ -242,10 +268,17 @@ void linearFit(double *c)
 		sum += t*t ;
 		tp++ ;
 	}
-	printf("rms deviation: %8.3f\n", sqrt(sum/m) ) ;
+	if( shLogLevel > 4 )printf("rms deviation: %8.3f\n", sqrt(sum/m) ) ;
+}
+void vFInitFromMemory()
+{	/* velocity function is already in memory */
+	makeTTable(&mp) ;
+	linearFit(vFNModelP ) ;
+	makeTTable(&ms) ;
+	linearFit(vFNModelS ) ;
 }
 void vFInit()
-{
+{	/* velocity function is read from disk */
 	travelTTable("silp.vel") ;
 	linearFit(vFNModelP) ;
 	travelTTable("sils.vel") ;

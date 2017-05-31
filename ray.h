@@ -27,6 +27,7 @@ typedef struct {
 	int nP,nS ;
 	int nIter ;
 	double sumP,sumS ;
+	double stdP,stdS ;
 	double length ;
 } Solution ;
 typedef struct { double x,z ; } DepthPoint ;

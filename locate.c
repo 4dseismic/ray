@@ -73,6 +73,7 @@ int  locate( Solution *sol, Phase *pp )
 	km2lon = km2lat * cos(sol->lat * M_PI/180.0 ) ;
 	for ( iter = 0 ; iter < 35 ; iter++) {
 	  sumP = 0.0 ; sumS = 0.0 ; ns = 0 ;
+	  if(shLogLevel > 4 ) printf("rayTrace = %d\n", rayTrace) ;
 	  for( i = 0 ; i < np ; i++ ) {
 		p = pp+i ;
 		s = p->statP ;
@@ -95,8 +96,8 @@ int  locate( Solution *sol, Phase *pp )
 		if( p->type == 'P' )sumP += residual*residual ; else {sumS +=  residual*residual ; ns++ ; }
 /*
 		dl = 0.0001 ;
-		distance = gDistance(x0[1]+dl,s->lat,dlon) ;
-		ttz = timeFromDist(vm,distance,x0[3],&rayp,&dtdx,&dxdp) +x0[0] ;
+		distance = gDistance(x0[1]+d2,s->lat,dlon) ;
+		ttz = timeFromDist(vm,distan2e,x0[3],&rayp,&dtdx,&dxdp) +x0[0] ;
 		dtdlax = (ttz-tt)/dl ;
 		distance = gDistance(x0[1],s->lat,dlon+dl) ;
 		ttz = timeFromDist(vm,distance,x0[3],&rayp,&dtdx,&dxdp) +x0[0] ;
@@ -111,17 +112,17 @@ int  locate( Solution *sol, Phase *pp )
 	   lenx = sqrt( kmn*kmn + kme*kme + x[3]*x[3] ) ;
 	   azi = atan2(kmn,kme) * 180.0/M_PI ; if( azi < 0 ) azi += 180 ;
 	   damp = 20.0/lenx ;
-	   damp = 0.3/lenx ;
-#define DAMP 0.49
+	   damp = 2.6/lenx ;
+#define DAMP 1.0
 	   if(damp > DAMP) damp = DAMP ;
 	   for( j = 0 ; j < 4 ; j++) x0[j] += damp*x[j] ;
-	   if(sol->nIter == 1 )  {
+	   if(shLogLevel >  3 )  {
 	  	 printModel(" x ",x) ;
 		 printModel(" x0",x0) ;
 	   }
 	   stdP = sqrt(sumP/(np-ns)) ;
 	   stdS = sqrt(sumS/ns) ;
-	   if(sol->nIter == 1 ) 
+	   if(shLogLevel > 3 ) 
 	     printf("iter = %2d  stdP =%9.6f stdS =%9.6f azi=%5.0f lenx=%7.3f damp=%7.2f\n",iter,stdP,stdS,azi,lenx,damp) ;
 	   if( lenx < 0.01 ) break ;
 	}
@@ -131,7 +132,8 @@ int  locate( Solution *sol, Phase *pp )
 	sol->sumP = sumP ;
 	sol->sumS = sumS ;
 	sol->length = lenx ;
-	if( sol->nIter == 1 ) printf("%2d iterations. lenx = %7.3f\n",iter,lenx) ;
+	sol->stdP = stdP ;
+	sol->stdS = stdS ;
 	return np ;
 }
 
@@ -164,7 +166,7 @@ doit( int skip )
 	nPhases = readPhases(phaseFile,&phases ) ;
 	nLoc = readCtloc(solFile,&location) ;
 	lp = location + skip ;
-	lp->nIter = 0 ;
+	lp->nIter = 1 ;
 	while( nEvents--) {
 	  index = lp->index ;
 	  printf("index=%ld\n",index) ;
@@ -175,7 +177,7 @@ doit( int skip )
 		sp = ip->statP ;
 		dist = sDistance(sp->lat,lp->lat,sp->lon-lp->lon ) ;
 		azi = azAzimuth(lp->lat,sp->lat,sp->lon-lp->lon ) ;
-		printf("%ld %s %c %10.6f %10.6f dist =%7.2f azi =%8.2f\n",ip->index,sp->name,ip->type,ip->pTime,ip->weight,dist,azi ) ;
+		printf("%ld %s %c %10.6f %10.6f dist =%9.4f azi =%8.2f\n",ip->index,sp->name,ip->type,ip->pTime,ip->weight,dist,azi ) ;
 		ip++ ;
 	  }
 	  printf("%d phases\n",ip-phases ) ;

@@ -10,7 +10,7 @@ velfit : $F
 	cc -o velfit -DTEST  $F -lm
 	
 
-azimuth.o distance.o locate.o phases.o ray.o rayplot.o reltest.o stations.o travelt.o velfit.o : ray.h
+azimuth.o distance.o locate.o phases.o ray.o rayplot.o reltest.o stations.o travelt.o velfit.o minvel.o : ray.h
 
 rayplott : rayplot
 	rayplot

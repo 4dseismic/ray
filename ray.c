@@ -197,7 +197,7 @@ double rtrace( double v1,double v2, double z, double p, double *x, double *t )
 		return(0.0) ; }
 	si1 = p*v1 ;
 	if( si1 > 1.0 )	{ *t = 0.0, *x =0.0 ; 
-		rLog(3, "rtrace returns due to sin > 1" , NULL) ;
+		rLog(5, "rtrace returns due to sin > 1" , NULL) ;
 		return(z) ; }
 	if( p == 0 ) {    /* vertical ray */
 		*t = z*log(v2/v1)/(v2-v1) ;
