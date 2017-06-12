@@ -89,8 +89,46 @@ void pass1()
 			(lp->stdS < 0.3 )) *op++ = *lp ;
 	}
 	nWorking = op - workingLoc ;
-	printf("%d iterations, nSolutions = %d nWorking = %d\n",sumi, nSolutions,nWorking) ;
-	
+	printf("%d iterations, nSolutions = %d nWorking = %d\n",sumi, nSolutions,nWorking) ; 
+} 
+void search( int nVel )
+{
+	int i,nPar,iPass ;
+	double *value[50], **vp, *work,x1,x2,x3,y1,y2,y3  ;	
+	double xstep, damper,limit ;
+	double a,b,c,xx ;
+	damper = 0.3 ;
+	limit = 0.2 ;
+	xstep = 0.04 ;
+	vp = value ;
+	for (i = 0; i < nVel ; i++ ) {
+		*vp++ = mp.v+i	;
+		*vp++ = ms.v+i	;
+	}
+	nPar = 2*nVel ;
+	for( iPass = 0 ; iPass < 5 ; iPass++ ) {
+	    for( i = 0 ; i < nPar ; i++) {
+		work = value[i] ;
+		x2 = *work ;
+		y2 = processVel(workingLoc,nWorking) ;
+		x1 = x2 - xstep ;
+		*work = x1 ;
+		y1 = processVel(workingLoc,nWorking) ;
+		x3 = x2 + xstep ;
+		*work = x3 ;
+		y3 = processVel(workingLoc,nWorking) ;
+		c = 0.5*(y3+y1) - y2 ;
+		b = 0.5*(y3-y1) ;
+		a = y2  ;
+		xx = -0.5*b*xstep/c ;
+		if( xx > limit ) xx = limit ;
+		if( xx < -limit ) xx = -limit ;
+		*work = x2 + damper * xx ;
+	        printf("%9.5f%9.5f%9.5f |",y2,xx,c) ;
+	     }
+	     printf("\n") ;
+	}
+	printVelModel(&ms) ;
 }
 void test3()
 {
@@ -110,5 +148,6 @@ main()
 	shLogLevel = 2 ;
 	getData() ;
 	pass1() ;	
-	test3() ;
+/*	test3() ; */
+	search(6) ;
 }
