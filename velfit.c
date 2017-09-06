@@ -71,6 +71,29 @@ void travelTTable( char * vfile)
 	    }
 	}
 }
+void travelTTableNoIter( char * vfile)
+{
+	VelModel vm,jm ;
+	int ix,iz ;
+	double x,z,dx,dz,t,dtdx,p,dxdp ;
+	TimePoint *tp ;
+	initVelModel(20,&jm) ;
+	nVList = nX*nZ ;
+	if( NULL == vList ) vList = ( TimePoint *) malloc( nVList * sizeof(TimePoint) ) ;
+	tp = vList ;
+	readVelModel(vfile,&jm) ;
+	vm = resampleVelModel(&jm,0.25,50) ;
+	dz = vFZMax/nZ ; dx = vFXMax/nX ;
+        for( iz = 0 ; iz < nZ ; iz++) {
+	   z = (0.5 + iz) * dz ;
+	   for( ix = 0 ; ix < nX ; ix++ ) {
+	 	x = (0.5 + ix) * dx ;
+		tp->x = x ; tp->z = z ;
+		tp->t = timeFromDist(&vm,x,z,&p,&dtdx,&dxdp) ;
+		tp++ ;
+	    }
+	}
+}
 void makeTTable( VelModel *vmp )
 {
 	VelModel vm ;
@@ -279,9 +302,13 @@ void vFInitFromMemory()
 }
 void vFInit()
 {	/* velocity function is read from disk */
-	travelTTable("silp.vel") ;
+	int iterate;
+	iterate = 1 ;
+	if (iterate ) travelTTable("silp.vel") ;
+	else travelTTableNoIter("silp.vel") ;
 	linearFit(vFNModelP) ;
-	travelTTable("sils.vel") ;
+	if ( iterate )travelTTable("sils.vel") ;
+	else travelTTableNoIter("sils.vel") ;
 	linearFit(vFNModelS) ;
 }
 #ifdef TEST

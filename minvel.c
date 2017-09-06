@@ -1,5 +1,5 @@
 /*
-	Code to imporive velocity functions
+	Code to improve velocity functions
 	(c) Einar Kjartansson 2017
 
 */
@@ -106,7 +106,7 @@ void search( int nVel )
 		*vp++ = ms.v+i	;
 	}
 	nPar = 2*nVel ;
-	for( iPass = 0 ; iPass < 5 ; iPass++ ) {
+	for( iPass = 0 ; iPass < 16 ; iPass++ ) {
 	    for( i = 0 ; i < nPar ; i++) {
 		work = value[i] ;
 		x2 = *work ;
@@ -128,7 +128,7 @@ void search( int nVel )
 	     }
 	     printf("\n") ;
 	}
-	printVelModel(&ms) ;
+	printVelModel(&mp) ;
 }
 void test3()
 {
@@ -144,10 +144,10 @@ void test3()
 }
 main()
 {
-	
+	feenableexcept(FE_INVALID) ; 
 	shLogLevel = 2 ;
 	getData() ;
 	pass1() ;	
 /*	test3() ; */
-	search(6) ;
+	search(7) ;
 }

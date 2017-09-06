@@ -47,7 +47,7 @@ locate : $L locate.c
 
 M =  minvel.o locate.o $L
 minvel : $M 
-	cc  $M -o minvel -lproj -lm
+	cc  -g $M -o minvel -lproj -lm
 
 T = travelt.o ray.o
 

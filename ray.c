@@ -206,7 +206,8 @@ double rtrace( double v1,double v2, double z, double p, double *x, double *t )
 		return 0.0 ;
 	}
 	si2 = p*v2 ;
-	if( v1 == v2 ) 	{  /* constant velocity */
+/*	if( v1 == v2 )  {   constant velocity */
+	if( fabs(v2-v1)< 0.0001 ) {
 		co1 = sqrt( 1.0 - si1 * si1 ) ;
 		*x = z * si1 / co1 ;
 		*t = z /( co1 * v1 ) ;
@@ -433,7 +434,7 @@ double timeFromDist( VelModel *m, double x, double z, double *p, double *dtdx, d
 			pp = 0.5*(pNew + p1 ) ;
 			xx = traceUD(mode,pp,z,m,&tt) ;
 		}
-		if( fabs(xx-x) < 1.e-7 ) break ;
+		if( fabs(xx-x) < 1.e-5 ) break ;
 		dxdt = ( xx-xNew)/(tt-tOld) ;
 		pOld = pNew; xOld = xNew ;
 		tOld = tt ;
