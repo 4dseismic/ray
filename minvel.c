@@ -106,7 +106,7 @@ void search( int nVel )
 		*vp++ = ms.v+i	;
 	}
 	nPar = 2*nVel ;
-	for( iPass = 0 ; iPass < 16 ; iPass++ ) {
+	for( iPass = 0 ; iPass < 6 ; iPass++ ) {
 	    for( i = 0 ; i < nPar ; i++) {
 		work = value[i] ;
 		x2 = *work ;
@@ -150,4 +150,5 @@ main()
 	pass1() ;	
 /*	test3() ; */
 	search(7) ;
+	printVelModel(&mp) ;
 }
