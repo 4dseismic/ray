@@ -51,6 +51,10 @@ minvel : $M
 
 T = travelt.o ray.o
 
+E = readeve.o ray.o stations.o
+readeve : $E
+	cc -g $E -lm -o readeve
+
 
 travelt : $T
 	cc ${CFLAGS}  -o travelt $T -lm

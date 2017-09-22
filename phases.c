@@ -66,7 +66,7 @@ void printSol( Solution *p, int n )
 	int i ;
 	for(i = 0 ; i < n ; i++) {
 		printf("%ld %10.6f %10.6f %8.3f %10.4f\n",
-			p->index,p->lat,p->lon,p->depth,p->timeShift) ;
+			p->index,p->lat,p->lon,p->depth,p->time) ;
 		p++ ;
 	}
 }
@@ -94,7 +94,7 @@ int readReloc(char *fileName, Solution **solutions)
 		dt = ts - ti ;
 		if( dt >  30.0 ) dt -= 60.0 ;
 		if( dt < -30.0 ) dt += 60.0 ;
-		sp->timeShift = dt ;
+		sp->time = dt ;
 		sp++ ;
 /*		printf("%s %s %8.4f %8.4f %8.4f\n",line[0],line[1], ts,ti,dt) ; */
 	}

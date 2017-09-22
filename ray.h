@@ -1,4 +1,5 @@
 
+#define INDEXEND 29990101011647938 /* sentinel at end of tables */
 extern int shLogLevel ;
 extern double zBottom ;
 typedef struct {
@@ -18,10 +19,11 @@ typedef struct {
 	double pTime ;
 	double weight ;
 	char type ;
+	int count ;
 } Phase ;
 typedef struct {
 	long long index ;
-	double lat,lon,depth, timeShift ;
+	double lat,lon,depth, time ;
 	Phase *phase ;
 	int nPhase ;
 	int nP,nS ;
@@ -30,6 +32,11 @@ typedef struct {
 	double stdP,stdS ;
 	double length ;
 } Solution ;
+typedef struct {
+	long long index ;
+	double lat,lon,depth, time ;
+} Event ;
+
 typedef struct { double x,z ; } DepthPoint ;
 typedef enum { RayUp, RayDown, Surface, DepthPhase } Mode ;
 #define MaxLayer 1000
