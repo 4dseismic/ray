@@ -18,8 +18,9 @@ typedef struct {
 	Station *statP ;
 	double pTime ;
 	double weight ;
+	short iPhase ;
 	char type ;
-	int count ;
+	char station[4] ;
 } Phase ;
 typedef struct {
 	long long index ;

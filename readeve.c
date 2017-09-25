@@ -54,7 +54,7 @@ void readEFile( char *ename )
 	time_t ttIndex, ttEvent,ttPhase ;
 	int indexms;
 	static size_t n=100 ;
-	int len,j ;
+	int len,j,iPhase ;
 	char line[100], buffer[100] ;
 	double eventSec, sourceTime,phaseSec,eventFrac,phaseFrac,dist,ttime ;
 	static Event ev ;
@@ -68,9 +68,6 @@ void readEFile( char *ename )
 	}
 	ename[cp-buffer-1] = 0 ;
 	indexms = atoi(bp) ;
-/*	tm.tm_sec=atoi(bp-3) ;
-	tm.tm_min=atoi(bp-6) ;
-	tm.tm_hour=atoi(bp-15) ; */
 	efile = fopen(ename,"r") ;
 	cp = fgets(line,n,efile) ;
 	j = atoi(line+60) ;
@@ -112,6 +109,7 @@ void readEFile( char *ename )
  	writeEvent(&ev) ; 
 	cp = fgets(line,n,efile) ;
 	cp = fgets(line,n,efile) ;
+	iPhase = 0 ;
 	while (*cp == ' ' ) {
 		tm.tm_hour = atoi(line+6) ;
 		tm.tm_min  = atoi(line+9) ;
@@ -126,6 +124,9 @@ void readEFile( char *ename )
 		phase.index = ev.index ;
 		phase.pTime = ttPhase-ttIndex + phaseFrac ;
 		phase.type = line[5] ;
+		phase.iPhase = iPhase++ ;
+		strncpy(phase.station,line+1,3) ;
+		phase.station[3] = 0 ;
 		if( shLogLevel > 4 ) 
 			printf(" hour,min sec ttime %d %d %f %d %f %f %f %s\n",
 			tm.tm_hour,tm.tm_min,phaseSec,ttPhase-ttEvent,dist,ttime,dist/ttime,sp->name) ;

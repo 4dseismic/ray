@@ -55,6 +55,9 @@ E = readeve.o ray.o stations.o
 readeve : $E
 	cc -g $E -lm -o readeve
 
+V = editeve.o ray.o stations.o
+editeve : $V
+	cc -g $V -lm -o editeve
 
 travelt : $T
 	cc ${CFLAGS}  -o travelt $T -lm
