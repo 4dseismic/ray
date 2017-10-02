@@ -13,11 +13,25 @@
 char *baseName = "testing" ;
 Event *events ;
 Phase *phases ;
-int nEvent, nPhase ;
+Solution *solutions ;
+int nEvent, nPhase, nSol ;
+/*		Default values */
+int phasesMin = 5 ;
+int phasesMax = 999 ;
+double zMax = 8.0 ;
+double zMin = 2.5 ; 
+double latMin = 63.0 ;
+double latMax = 65.0 ;
+double lonMin = -25.0 ;
+double lonMax = -18.0 ; 
+double distMax  = 90.0 ;
+long long indexMin = 1900 ;
+long long indexMax = INDEXEND;
 
 int readTable( char *suffix, int size, void **addr ) 
 {
 	int fd, space, n, nRec ;
+	long long *ip ;
 	char fname[100] ;
 	sprintf(fname,"%s.%s",baseName,suffix) ;
 	fd = open(fname,O_RDONLY )  ;
@@ -29,6 +43,8 @@ int readTable( char *suffix, int size, void **addr )
 	printf("fname=%s n=%d space=%d size=%d nRec=%d\n",fname,n,space,size,nRec) ;
 	if( space != n ) rLog(1,"Error reading %s",fname) ;
 	close(fd) ;
+	ip = *addr + space ;    *ip = INDEXEND ;
+	n = read(fd,*addr,space) ; 
 	return nRec ;
 }
 void printE()
@@ -75,23 +91,148 @@ int compareEvent( const void *p1, const void *p2 )
 	if ( i1 < i2 ) return -1  ;
 	return 0 ;
 }
-doIt()
+int testEvent( Event *ep, Phase *pp, int nP )
+{
+	if ( ep->lat < latMin ) return 0 ;
+	if ( ep->lat > latMax ) return 0 ;
+	if ( ep->lon < lonMin ) return 0 ;
+	if ( ep->lon > lonMax ) return 0 ;
+	if ( ep->depth < zMin ) return 0 ;
+	if ( ep->depth > zMax ) return 0 ;
+	if( ep->index < indexMin )  return 0 ;
+	if( ep->index > indexMax )  return 0 ;
+	if( nP       < phasesMin )  return 0 ; 
+	if( nP       > phasesMax)  return 0 ; 
+	return 1 ;
+}
+void checkEvents() 
+{
+	int ie  ;
+	long long idx ;
+	Phase *pp, *pp1 ;
+	Event *ep ;
+	pp = phases ;
+	ep = events ;
+	for ( ie = 0 ; ie < nEvent ; ie++) {
+		idx = ep->index ;
+		while ( pp->index < idx ) pp++ ;
+		pp1 = pp ;
+		while ( pp1->index == idx ) pp1++ ;
+/*		printf("%5d %ld %3d\n",ie,idx, pp1-pp ) ; */
+		nSol += testEvent(ep,pp,pp1-pp) ;
+		ep++ ;
+		pp = pp1 ;
+	}
+	printf("Of %d events %d passed\n",nEvent,nSol) ;
+}
+void checkPhases() /* remove phases to far from source. Distance estimated from phase times.*/
+{	
+	int ie,ip ;
+	double ts,tp,ttime ;
+	long long idx  ;
+	Phase *pp,*pp1 ;
+	Event *ep ;
+	ts = distMax/3.5 ;
+	tp = distMax/6.4 ;
+	pp = phases ;
+	ep = events ;
+	for( ie = 0 ; ie < nEvent ; ie++ ) {
+		idx = ep->index ;
+		while ( pp->index < idx ) pp++ ;
+		pp1 = pp ; 
+		while ( pp1->index == idx ){
+			ttime = pp1->pTime - ep->time ;
+			if ( pp1->type == 's' ) 
+				if( ttime > ts ) pp1->type = 'x' ;
+			if ( pp1->type == 'p' ) 
+				if( ttime > tp ) pp1->type = 'x' ;
+			pp1++ ;
+		}
+		ep++ ;
+		pp = pp1 ;
+	}
+	pp = phases ;
+	pp1 = phases ;
+	for(ip = 0 ; ip < nPhase ; ip++) {
+		*pp1 = *pp ;
+		if (pp->type != 'x' ) pp1++ ;
+		*pp++ ;
+	}
+	printf("%d phases further than %f km from source\n",pp -pp1,distMax) ;
+	nPhase = pp1 - phases ;
+}
+void makeSolutions()
+{
+	int ie  ;
+	long long idx ;
+	Phase *pp, *pp1 ;
+	Event *ep ;
+	Solution *sp ;
+	pp = phases ;
+	ep = events ;
+	solutions = calloc(nSol,sizeof(Solution)) ;
+	sp = solutions ;
+	for ( ie = 0 ; ie < nEvent ; ie++) {
+		idx = ep->index ;
+		while ( pp->index < idx ) pp++ ;
+		pp1 = pp ;
+		while ( pp1->index == idx ) pp1++ ;
+		if( testEvent(ep,pp,pp1-pp)) {
+			sp->index = ep->index ;
+			sp->lat   = ep->lat ;
+			sp->lon   = ep->lon ;
+			sp->depth = ep->depth ;
+			sp->time  = ep->time ;
+			sp->phase = pp ;
+			sp->nPhase = pp1 - pp ;
+			sp++ ;
+		}
+		ep++ ;
+		pp = pp1 ;
+	}
+	free(events) ;
+}
+void doIt()
 {
 	nEvent = readTable("event", sizeof(Event),(void *) &events) ;
 	events[nEvent].index = INDEXEND ;
 	nPhase = readTable("phase", sizeof(Phase),(void *) &phases) ;
 	phases[nPhase].index = INDEXEND ;
-	printP() ;
-	printE() ;
+/*	printP() ;
+	printE() ; */
 	qsort(phases,nPhase,sizeof(Phase), comparePhase ) ; 
 	qsort(events,nEvent,sizeof(Event), comparePhase ) ; 
-	printP() ;
-	printE() ;
-	
+/*	printP() ;
+	printE() ; */
+	printf("%d events, %d phases\n",nEvent,nPhase) ;
+	checkPhases() ;
+	checkEvents() ;
+	makeSolutions() ;
 }
 
 int main( int ac, char **av)
 {
+int cc ;
+	extern char *optarg ;	
+	while( EOF != ( cc = getopt(ac,av,"e:z:Z:b:B:l:L:n:N:i:I:D:"))) {
+		switch(cc) {
+		case 'e' : baseName = optarg ; break ;
+		case 'z' : zMin = atof(optarg) ;  break ;
+		case 'Z' : zMax = atof(optarg) ;  break ;
+		case 'b' : latMin = atof(optarg) ; break ;
+		case 'B' : latMax = atof(optarg) ; break ;
+		case 'l' : lonMin = atof(optarg) ; break ;
+		case 'L' : lonMax = atof(optarg) ; break ;
+		case 'n' : phasesMin = atoi(optarg) ; break ;
+		case 'N' : phasesMax = atoi(optarg) ; break ;
+		case 'i' : indexMin = atoll(optarg) ; break ;
+		case 'I' : indexMax = atoll(optarg) ; break ;
+		case 'D' : distMax = atof(optarg) ; break ;
+	}}
+	while (indexMin < INDEXEND/10 ) indexMin *= 10 ;
+	while (indexMax < INDEXEND/10 ) indexMax *= 10 ;
+	printf("Index range: %ld %ld Phase range: %d %d\n", indexMin, indexMax, phasesMin,phasesMax ) ;
 	doIt() ;
+	return 1 ;
 }
 

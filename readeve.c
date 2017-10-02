@@ -109,7 +109,7 @@ void readEFile( char *ename )
  	writeEvent(&ev) ; 
 	cp = fgets(line,n,efile) ;
 	cp = fgets(line,n,efile) ;
-	iPhase = 0 ;
+	iPhase = 1 ;
 	while (*cp == ' ' ) {
 		tm.tm_hour = atoi(line+6) ;
 		tm.tm_min  = atoi(line+9) ;
