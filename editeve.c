@@ -8,6 +8,8 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#define _GNU_SOURCE
+#include <fenv.h>
 #include "../rayt/ray.h"
 
 char *baseName = "testing" ;
@@ -15,9 +17,12 @@ Event *events ;
 Phase *phases ;
 Solution *solutions ;
 int nEvent, nPhase, nSol ;
+extern VelModel mp,ms ;
+
 /*		Default values */
 int phasesMin = 5 ;
 int phasesMax = 999 ;
+int minSorP = 2 ;
 double zMax = 8.0 ;
 double zMin = 2.5 ; 
 double latMin = 63.0 ;
@@ -93,6 +98,7 @@ int compareEvent( const void *p1, const void *p2 )
 }
 int testEvent( Event *ep, Phase *pp, int nP )
 {
+	int i,ns ;
 	if ( ep->lat < latMin ) return 0 ;
 	if ( ep->lat > latMax ) return 0 ;
 	if ( ep->lon < lonMin ) return 0 ;
@@ -103,6 +109,10 @@ int testEvent( Event *ep, Phase *pp, int nP )
 	if( ep->index > indexMax )  return 0 ;
 	if( nP       < phasesMin )  return 0 ; 
 	if( nP       > phasesMax)  return 0 ; 
+	ns = 0 ; 
+	for( i = 0 ; i < nP ; i++) if (pp[i].type == 'S' ) ns++ ;
+	if( ns < minSorP ) return 0 ;
+	if( nP - ns < minSorP ) return 0 ;
 	return 1 ;
 }
 void checkEvents() 
@@ -113,7 +123,9 @@ void checkEvents()
 	Event *ep ;
 	pp = phases ;
 	ep = events ;
+	idx = -1 ;
 	for ( ie = 0 ; ie < nEvent ; ie++) {
+		if( idx == ep->index ) rLog(0,"duplicate index %ld",idx) ;
 		idx = ep->index ;
 		while ( pp->index < idx ) pp++ ;
 		pp1 = pp ;
@@ -160,6 +172,10 @@ void checkPhases() /* remove phases to far from source. Distance estimated from 
 	}
 	printf("%d phases further than %f km from source\n",pp -pp1,distMax) ;
 	nPhase = pp1 - phases ;
+	for( ip = 0 ; ip < nPhase ; ip++) {
+		pp = phases + ip ;
+		pp->statP = lookUpStation( pp->station ) ;
+	}
 }
 void makeSolutions()
 {
@@ -192,6 +208,29 @@ void makeSolutions()
 	}
 	free(events) ;
 }
+initVel()
+{
+	initVelModel(20,&mp) ; readVelModel("silp.vel",&mp) ; 
+	initVelModel(20,&ms) ; readVelModel("sils.vel",&ms) ; 
+	
+/*	vFInitFromMemory() ; */
+}
+void pass1()
+{	Solution *lp ;
+	Phase *pp ;
+	int ii,sumi ;
+	for( ii = 0 ; ii < nSol ; ii++) {
+		lp = solutions + ii ;
+		lp->nIter = 1 ;
+		pp = lp->phase ;
+		locate( lp,pp) ;	
+		if(shLogLevel > 3 )
+		   printf("nP=%3d nS=%3d nIter=%3d stdP=%10.4f stdS=%10.4f length=%10.4f\n",
+			lp->nP,lp->nS,lp->nIter,lp->stdP, lp->stdS,lp->length) ;
+		sumi += lp->nIter ;
+	}
+
+}
 void doIt()
 {
 	nEvent = readTable("event", sizeof(Event),(void *) &events) ;
@@ -208,13 +247,17 @@ void doIt()
 	checkPhases() ;
 	checkEvents() ;
 	makeSolutions() ;
+	initVel() ;
+	pass1() ;
 }
 
 int main( int ac, char **av)
 {
 int cc ;
 	extern char *optarg ;	
-	while( EOF != ( cc = getopt(ac,av,"e:z:Z:b:B:l:L:n:N:i:I:D:"))) {
+	feenableexcept(FE_INVALID) ;
+	shLogLevel = 3 ;
+	while( EOF != ( cc = getopt(ac,av,"e:z:Z:b:B:l:L:n:N:m:i:I:D:"))) {
 		switch(cc) {
 		case 'e' : baseName = optarg ; break ;
 		case 'z' : zMin = atof(optarg) ;  break ;
@@ -225,14 +268,15 @@ int cc ;
 		case 'L' : lonMax = atof(optarg) ; break ;
 		case 'n' : phasesMin = atoi(optarg) ; break ;
 		case 'N' : phasesMax = atoi(optarg) ; break ;
+		case 'm' : minSorP = atoi(optarg) ; break ;
 		case 'i' : indexMin = atoll(optarg) ; break ;
 		case 'I' : indexMax = atoll(optarg) ; break ;
 		case 'D' : distMax = atof(optarg) ; break ;
 	}}
-	while (indexMin < INDEXEND/10 ) indexMin *= 10 ;
+	while (indexMin < INDEXEND/10 ) indexMin *= 10 ; /* appending zeroes to index limits as neede */
 	while (indexMax < INDEXEND/10 ) indexMax *= 10 ;
 	printf("Index range: %ld %ld Phase range: %d %d\n", indexMin, indexMax, phasesMin,phasesMax ) ;
 	doIt() ;
-	return 1 ;
+	return 0 ;
 }
 

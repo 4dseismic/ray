@@ -1,7 +1,8 @@
 
 CFLAGS=-g
 
-top : tl
+top : editeve
+	editeve  -l -21 -L -20.0
 
 vf : velfit
 	velfit
@@ -51,13 +52,13 @@ minvel : $M
 
 T = travelt.o ray.o
 
-E = readeve.o ray.o stations.o
+E = readeve.o ray.o  stations.o
 readeve : $E
 	cc -g $E -lm -o readeve
 
-V = editeve.o ray.o stations.o
+V = editeve.o locate.o $L
 editeve : $V
-	cc -g $V -lm -o editeve
+	cc -g $V -lm -o editeve -lproj
 
 travelt : $T
 	cc ${CFLAGS}  -o travelt $T -lm

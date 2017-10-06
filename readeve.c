@@ -123,7 +123,7 @@ void readEFile( char *ename )
 		sp = lookUpStation(line+1) ;
 		phase.index = ev.index ;
 		phase.pTime = ttPhase-ttIndex + phaseFrac ;
-		phase.type = line[5] ;
+		phase.type = (255-32) & line[5] ;   /* upper case */
 		phase.iPhase = iPhase++ ;
 		strncpy(phase.station,line+1,3) ;
 		phase.station[3] = 0 ;
