@@ -115,6 +115,7 @@ int  locate( Solution *sol, Phase *pp )
 	   damp = 2.6/lenx ;
 #define DAMP 1.0
 	   if(damp > DAMP) damp = DAMP ;
+	   if( damp*x[3] < -0.3 *x0[3] ) damp = -0.2*x0[3]/x[3] ;
 	   for( j = 0 ; j < 4 ; j++) x0[j] += damp*x[j] ;
 	   if(shLogLevel >  3 )  {
 	  	 printModel(" x ",x) ;
@@ -124,7 +125,7 @@ int  locate( Solution *sol, Phase *pp )
 	   stdS = sqrt(sumS/ns) ;
 	   if(shLogLevel > 3 ) 
 	     printf("iter = %2d  stdP =%9.6f stdS =%9.6f azi=%5.0f lenx=%7.3f damp=%7.2f\n",iter,stdP,stdS,azi,lenx,damp) ;
-	   if( lenx < 0.01 ) break ;
+	   if( lenx < 0.05 ) break ;
 	}
 	sol->nP = np - ns ;
 	sol->nS = ns ;

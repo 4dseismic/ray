@@ -52,7 +52,7 @@ void readEFile( char *ename )
 	char *bp, *cp ;
 	static struct tm tm ;
 	time_t ttIndex, ttEvent,ttPhase ;
-	int indexms;
+	int indexms, indexSec ;
 	static size_t n=100 ;
 	int len,j,iPhase ;
 	char line[100], buffer[100] ;
@@ -68,10 +68,12 @@ void readEFile( char *ename )
 	}
 	ename[cp-buffer-1] = 0 ;
 	indexms = atoi(bp) ;
+	indexSec = atoi(bp-3) ;
 	efile = fopen(ename,"r") ;
 	cp = fgets(line,n,efile) ;
 	j = atoi(line+60) ;
-	tm.tm_sec = j%100 ;
+/*	tm.tm_sec = j%100 ; */
+	tm.tm_sec = indexSec ;
 	j = j / 100 ;
 	tm.tm_min = j%100 ;
 	tm.tm_hour = j/100 ;

@@ -192,8 +192,11 @@ double rtrace( double v1,double v2, double z, double p, double *x, double *t )
 	double si1, si2, co1, co2 ;
 	double z0, r, b, b1 ;
 	double zin, v2in,zturn ;
-	if( z <= 0.0 ) 	{ *t = 0.0, *x =0.0 ; 
-		rLog(3, "rtrace returns due to z <= 0.0" , NULL) ;
+	if( z < 0.0 ) 	{ *t = 0.0, *x =0.0 ; 
+		rLog(-1, "rtrace returns due to z < 0.0" , NULL) ;
+		return(0.0) ; }
+	if( z == 0.0 ) 	{ *t = 0.0, *x =0.0 ; 
+		rLog(6, "rtrace returns due to z == 0.0" , NULL) ;
 		return(0.0) ; }
 	si1 = p*v1 ;
 	if( si1 > 1.0 )	{ *t = 0.0, *x =0.0 ; 
@@ -211,7 +214,7 @@ double rtrace( double v1,double v2, double z, double p, double *x, double *t )
 		co1 = sqrt( 1.0 - si1 * si1 ) ;
 		*x = z * si1 / co1 ;
 		*t = z /( co1 * v1 ) ;
-		rLog(3, "rtrace returns for constant velocity" , NULL) ;
+		rLog(6, "rtrace returns for constant velocity" , NULL) ;
 		return(0.0) ; 
 	}
 	zturn = 0.0 ;
@@ -394,6 +397,7 @@ double timeFromDist( VelModel *m, double x, double z, double *p, double *dtdx, d
 	double pMax,xPMax, x1,x0, p1,p0,tt ;
 	double xOld,xNew,xx,pp,pNew,pOld,slope,tOld ;
 	double dxdt ;
+	if( z < 0.0 ) rLog(-1,"Negative z in timeFromDist",0) ;
 	pMax = 1.0/velZ(z,m,&ii) ;
 	if(shLogLevel > 5 )fprintf(stderr,"vSource=%8.3f ii=%d\n",1.0/pMax,ii) ;
 	if( z <= 0.0 ) xPMax = 0.0 ;

@@ -8,7 +8,7 @@ uses binary search
 #include <string.h>
 #include "ray.h"
 
-#define NSTAT 86
+#define NSTAT 87
 Station statList[NSTAT] = { 
  "ada", 65.01879, -15.57452, 0.443,
  "alf", 63.49104, -19.18440, 0.132,
@@ -73,6 +73,7 @@ Station statList[NSTAT] = {
  "mko", 64.97840, -16.33826, 0.690,
  "mok", 64.97784, -16.33909, 0.660,
  "nyl", 63.97368, -22.73792, 0.007,
+ "rey", 64.12765, -21.90397, 0.053,
  "ren", 65.64699, -16.90591, 0.338,
  "rju", 63.61745, -18.67210, 0.173,
  "rne", 63.81681, -22.70563, 0.019,
@@ -115,6 +116,7 @@ Station *lookUpStation( char *name )
 		if( test > 0 ) p1 = pp ;
 		else p0 = pp+1 ;
 	}
+	rLog(-1,"station name %s not found", (void *) name ) ;
 	return NULL ;
 }
 

@@ -20,7 +20,7 @@ int nEvent, nPhase, nSol ;
 extern VelModel mp,ms ;
 
 /*		Default values */
-int phasesMin = 5 ;
+int phasesMin = 8 ;
 int phasesMax = 999 ;
 int minSorP = 2 ;
 double zMax = 8.0 ;
@@ -30,8 +30,8 @@ double latMax = 65.0 ;
 double lonMin = -25.0 ;
 double lonMax = -18.0 ; 
 double distMax  = 90.0 ;
-long long indexMin = 1900 ;
-long long indexMax = INDEXEND;
+long long indexMin = 199107 ;
+long long indexMax = INDEXEND ;
 
 int readTable( char *suffix, int size, void **addr ) 
 {
@@ -64,11 +64,13 @@ void printE()
 }
 void printP()
 {
-	int i ;
+	int i,n ;
 	Phase *p ;
 	p = phases ;
-	for( i = 0 ; i < 18 ; i++) {
-		printf(" %ld %8.3f %s %c\n",p->index,p->pTime, p->station,p->type  ) ;
+	n = nPhase ;
+	if( n > 500 ) n = 500 ;
+	for( i = 0 ; i < n ; i++) {
+		printf("%3d %ld %8.3f %s %c\n",i,p->index,p->pTime, p->station,p->type  ) ;
 		p++ ;
 	}
 }
@@ -99,14 +101,18 @@ int compareEvent( const void *p1, const void *p2 )
 int testEvent( Event *ep, Phase *pp, int nP )
 {
 	int i,ns ;
+	long long index ;
+	index = ep->index ;
+	if ( index == (ep-1)->index ) return 0 ; /* remove duplicates */
+	if ( index == (ep+1)->index ) return 0 ;
 	if ( ep->lat < latMin ) return 0 ;
 	if ( ep->lat > latMax ) return 0 ;
 	if ( ep->lon < lonMin ) return 0 ;
 	if ( ep->lon > lonMax ) return 0 ;
 	if ( ep->depth < zMin ) return 0 ;
 	if ( ep->depth > zMax ) return 0 ;
-	if( ep->index < indexMin )  return 0 ;
-	if( ep->index > indexMax )  return 0 ;
+	if( index < indexMin )  return 0 ;
+	if( index > indexMax )  return 0 ;
 	if( nP       < phasesMin )  return 0 ; 
 	if( nP       > phasesMax)  return 0 ; 
 	ns = 0 ; 
@@ -115,7 +121,7 @@ int testEvent( Event *ep, Phase *pp, int nP )
 	if( nP - ns < minSorP ) return 0 ;
 	return 1 ;
 }
-void checkEvents() 
+void countEvents() 
 {
 	int ie  ;
 	long long idx ;
@@ -125,7 +131,7 @@ void checkEvents()
 	ep = events ;
 	idx = -1 ;
 	for ( ie = 0 ; ie < nEvent ; ie++) {
-		if( idx == ep->index ) rLog(0,"duplicate index %ld",idx) ;
+		if( idx == ep->index )  rLog(1,"duplicate index %ld",(void *) idx) ;
 		idx = ep->index ;
 		while ( pp->index < idx ) pp++ ;
 		pp1 = pp ;
@@ -140,12 +146,10 @@ void checkEvents()
 void checkPhases() /* remove phases to far from source. Distance estimated from phase times.*/
 {	
 	int ie,ip ;
-	double ts,tp,ttime ;
+	double ttime,dist ;
 	long long idx  ;
 	Phase *pp,*pp1 ;
 	Event *ep ;
-	ts = distMax/3.5 ;
-	tp = distMax/6.4 ;
 	pp = phases ;
 	ep = events ;
 	for( ie = 0 ; ie < nEvent ; ie++ ) {
@@ -154,10 +158,11 @@ void checkPhases() /* remove phases to far from source. Distance estimated from 
 		pp1 = pp ; 
 		while ( pp1->index == idx ){
 			ttime = pp1->pTime - ep->time ;
-			if ( pp1->type == 's' ) 
-				if( ttime > ts ) pp1->type = 'x' ;
-			if ( pp1->type == 'p' ) 
-				if( ttime > tp ) pp1->type = 'x' ;
+			if ( pp1->type == 'S' ) dist = ttime*3.6 ;
+			if ( pp1->type == 'P' ) dist = ttime*6.4 ;
+			if( dist > distMax ) pp1->type = 'x' ;
+/*			printf("%5d %ld %ld %8.3f %8.3f %8.3f %8.3f %c\n",
+				ie,ep->index,pp1->index,ep->time,pp1->pTime,ttime,dist,pp1->type) ; */
 			pp1++ ;
 		}
 		ep++ ;
@@ -245,8 +250,9 @@ void doIt()
 	printE() ; */
 	printf("%d events, %d phases\n",nEvent,nPhase) ;
 	checkPhases() ;
-	checkEvents() ;
+	countEvents() ;
 	makeSolutions() ;
+/*	printP() ; */
 	initVel() ;
 	pass1() ;
 }
@@ -256,7 +262,7 @@ int main( int ac, char **av)
 int cc ;
 	extern char *optarg ;	
 	feenableexcept(FE_INVALID) ;
-	shLogLevel = 3 ;
+	shLogLevel = 4 ;
 	while( EOF != ( cc = getopt(ac,av,"e:z:Z:b:B:l:L:n:N:m:i:I:D:"))) {
 		switch(cc) {
 		case 'e' : baseName = optarg ; break ;
