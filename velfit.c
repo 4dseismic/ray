@@ -100,6 +100,7 @@ void makeTTable( VelModel *vmp )
 	int ix,iz ;
 	double x,z,dx,dz,t,dtdx,p,dxdp ;
 	TimePoint *tp ;
+	printf("Enter makeTTable \n") ;
 	if(shLogLevel > 5 )printf("entering makeTTable, v[0]= %10.4f\n",vmp->v[0] ) ;
 	nVList = nX*nZ ;
 	if( NULL == vList ) vList = ( TimePoint *) malloc( nVList * sizeof(TimePoint) ) ;
@@ -115,6 +116,7 @@ void makeTTable( VelModel *vmp )
 		tp++ ;
 	    }
 	}
+	printf("Leave makeTTable \n") ;
 }
 void dumpTimeTable()
 {
@@ -125,7 +127,7 @@ void dumpTimeTable()
 	of = fopen("time.dump","w") ;
 	for( i = 0 ; i < nX ; i++) {
 		for( j = 0 ; j < nZ ; j++) {
-			fprintf(of,"%7.3f",tp->t - tp->tfit) ;
+			fprintf(of,"%7.3f",tp->t - tp->tfit) ; 
 			tp++ ;
 		}
 		fprintf(of,"%3d %5.1f\n",i,(tp-1)->x) ;
@@ -266,6 +268,7 @@ void linearFit(double *c)
 	double d[MAXPAR],dc[MAXPAR] ;
 	double t,w,sum ;
 	TimePoint *tp ;
+	printf("Entering linearFit nVList = %d\n",nVList ) ;
 /*	timeFuncSet(poly,29,0.0,0.0) ; */
 	timeFuncSet(poly,29,130.0,20.0) ;
 	m = nVList ;
@@ -303,7 +306,7 @@ void vFInitFromMemory()
 void vFInit()
 {	/* velocity function is read from disk */
 	int iterate;
-	iterate = 1 ;
+	iterate = 0 ;
 	if (iterate ) travelTTable("silp.vel") ;
 	else travelTTableNoIter("silp.vel") ;
 	linearFit(vFNModelP) ;
@@ -312,6 +315,7 @@ void vFInit()
 	linearFit(vFNModelS) ;
 }
 #ifdef TEST
+VelModel mp,ms ;
 int main(int ac, char **av) {
 	int cc,n ;
 	feenableexcept(FE_INVALID) ; 

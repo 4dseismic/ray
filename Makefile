@@ -56,7 +56,7 @@ E = readeve.o ray.o  stations.o
 readeve : $E
 	cc -g $E -lm -o readeve
 
-V = editeve.o locate.o $L
+V = editeve.o locate.o shuffle.o $L
 editeve : $V
 	cc -g $V -lm -o editeve -lproj
 

@@ -12,7 +12,6 @@
 #include <fenv.h>
 #include "../rayt/ray.h"
 
-char *baseName = "testing" ;
 Event *events ;
 Phase *phases ;
 Solution *solutions ;
@@ -20,17 +19,18 @@ int nEvent, nPhase, nSol ;
 extern VelModel mp,ms ;
 
 /*		Default values */
+char *baseName = "testing" ;
 int phasesMin = 8 ;
 int phasesMax = 999 ;
-int minSorP = 2 ;
+int minSorP = 2 ;  /* minimum number of either p or s phases */
 double zMax = 8.0 ;
 double zMin = 2.5 ; 
 double latMin = 63.0 ;
 double latMax = 65.0 ;
-double lonMin = -25.0 ;
-double lonMax = -18.0 ; 
+double lonMin = -22.0 ;
+double lonMax = -19.4 ; 
 double distMax  = 90.0 ;
-long long indexMin = 199107 ;
+long long indexMin = 19910700000000000 ;
 long long indexMax = INDEXEND ;
 
 int readTable( char *suffix, int size, void **addr ) 
@@ -101,9 +101,11 @@ int compareEvent( const void *p1, const void *p2 )
 int testEvent( Event *ep, Phase *pp, int nP )
 {
 	int i,ns ;
+	static long long lastIndex ;
 	long long index ;
 	index = ep->index ;
-	if ( index == (ep-1)->index ) return 0 ; /* remove duplicates */
+	if ( index == lastIndex ) return 0 ; /* remove duplicates */
+	lastIndex = index ;
 	if ( index == (ep+1)->index ) return 0 ;
 	if ( ep->lat < latMin ) return 0 ;
 	if ( ep->lat > latMax ) return 0 ;
@@ -175,7 +177,7 @@ void checkPhases() /* remove phases to far from source. Distance estimated from 
 		if (pp->type != 'x' ) pp1++ ;
 		*pp++ ;
 	}
-	printf("%d phases further than %f km from source\n",pp -pp1,distMax) ;
+	printf("%d phases further than %8.2f km from source\n",pp -pp1,distMax) ;
 	nPhase = pp1 - phases ;
 	for( ip = 0 ; ip < nPhase ; ip++) {
 		pp = phases + ip ;
@@ -221,22 +223,182 @@ initVel()
 /*	vFInitFromMemory() ; */
 }
 void pass1()
-{	Solution *lp ;
+{	Solution *lp, *op ;
 	Phase *pp ;
-	int ii,sumi ;
+	int ii,sumi,nn ;
+/*	vFInitFromMemory() ; */
+	sumi = 0 ;
+	printf("enter pass1: nSol = %d\n",nSol);
 	for( ii = 0 ; ii < nSol ; ii++) {
 		lp = solutions + ii ;
 		lp->nIter = 1 ;
 		pp = lp->phase ;
 		locate( lp,pp) ;	
-		if(shLogLevel > 3 )
+		if(shLogLevel > 1 )
 		   printf("nP=%3d nS=%3d nIter=%3d stdP=%10.4f stdS=%10.4f length=%10.4f\n",
 			lp->nP,lp->nS,lp->nIter,lp->stdP, lp->stdS,lp->length) ;
 		sumi += lp->nIter ;
 	}
+	op = solutions ;
+	lp = solutions ;
+	for( ii = 0 ; ii < nSol ; ii++) {
+		if( 	(lp->nIter < 12 ) &&
+			(lp->stdP < 0.07 ) &&
+			(lp->stdS < 0.1 )) *op++ = *lp ;
+		lp++ ;
+	}
+	printf("%d iterations, nSol = %d nWorking = %d\n",sumi, nSol,op-solutions) ; 
+	nSol = op - solutions ;
+	printf("leave pass1: nSol = %d\n",nSol);
 
 }
-void doIt()
+
+double processVel( Solution *sol, int n )
+{
+	Solution *lp ;
+	Phase *pp ;
+	int i ;
+	double sst ;
+	sst = 0 ;
+/*	vFInitFromMemory() ;  */
+	for( i = 0 ; i < n ; i++ ) {
+		lp = sol + i ;
+		pp = lp->phase ;
+		locate( lp,pp) ;
+		sst +=  ( 0.5 * lp->stdP + 0.3 * lp->stdS ) ;
+	}
+	return sst/n ;
+}
+double lowerParLimit( ipar )
+{		/* find lowest value of velocity that avoids increase in gradient */
+	int i ;
+	double slope, limit ;
+	VelModel *m ;
+	if ( ipar % 2 ) m = &ms ;
+		else m = &mp ;
+	i = ipar/2 ;
+	if( i == 0 ) return 0.0 ;
+	slope = ( m->v[i+1] - m->v[i-1] ) / ( m->z[i+1] - m->z[i-1] ) ;
+	limit = m->v[i-1] + ( m->z[i] - m->z[i-1] ) * slope ;
+	return limit ;
+}
+double upperParLimit( ipar )
+{		/* find higest value of velocity that avoids increase in gradient */
+	int i ;
+	double slope, limit1, limit2 ;
+	VelModel *m ;
+	if ( ipar % 2 ) m = &ms ;
+		else m = &mp ;
+	i = ipar/2 ;
+	slope = ( m->v[i+2] - m->v[i+1] ) / ( m->z[i+2] - m->z[i+1] ) ;
+	limit2 = m->v[i+1] - ( m->z[i+1] - m->z[i] ) * slope ;
+	if( i < 2 ) return limit2 ;
+	slope = ( m->v[i-1] - m->v[i-2] ) / ( m->z[i-1] - m->z[i-2] ) ;
+	limit1 = m->v[i-1] + ( m->z[i] - m->z[i-1] ) * slope ;
+	if( limit1 > limit2 ) return limit2 ;
+	return limit1 ;
+}
+void testLimits(int nvel)
+{
+	int i ;
+	double p1,p2,s1,s2,slopeP,slopeS ;
+	for( i = 0 ; i < nvel ; i++ ) {
+		p1 = lowerParLimit(2*i) ;
+		p2 = upperParLimit(2*i) ;
+		s1 = lowerParLimit(2*i+1) ;
+		s2 = upperParLimit(2*i+1) ;
+		slopeP = (mp.v[i+1] - mp.v[i]) / ( mp.z[i+1]-mp.z[i] ) ;
+		slopeS = (ms.v[i+1] - ms.v[i]) / ( ms.z[i+1]-ms.z[i] ) ;
+		printf("%8.2f %8.2f %8.2f %8.2f %8.3f %8.2f %8.2f %8.2f %8.3f\n",
+			mp.z[i],p1,mp.v[i],p2,slopeP,s1,ms.v[i],s2,slopeS) ;
+	}
+}
+void searchRandom( int nVel )
+{
+	int i, nPar, iPar, nOk ;
+	double *value[50],**vp, work,y0,y1  ;
+	double range,delta,rangeScale ;
+	double upperL, lowerL ;
+	time_t tt ;
+	
+	vp = value ;
+	for( i = 0 ; i < nVel ; i++){
+		*vp++ = mp.v+i ;
+		*vp++ = ms.v+i ;
+	}
+	i = 0 ;
+	srandom(time(&tt)) ;
+	nOk = 0 ;
+	nPar = 2*nVel ;
+	range = 0.049 ;
+	y0 = processVel(solutions,nSol) ; 
+	do {
+/*		iPar = iPar + 1 + random() % (nPar-1) ; */
+		iPar = shuffle(nPar) ;
+		iPar %= nPar ;
+		upperL = upperParLimit(iPar) ;
+		lowerL = lowerParLimit(iPar) ;
+		work = *value[iPar] ;
+		if( (work + range) < upperL ) upperL = work + range ;
+		if( (work - range) > lowerL ) lowerL = work - range ;
+		rangeScale = RAND_MAX/(upperL - lowerL) ;
+		*value[iPar] = lowerL + (random() / rangeScale) ;
+		delta = *value[iPar] - work ;
+/*		printf("i=%d iPar= %d delta=%8.2f \n",i,iPar,delta) ; */
+		y1 = processVel(solutions,nSol) ; 
+		if( y1 < y0 ) {
+			nOk++ ;
+			y0 =  y1 ;
+			range *= 1.08 ; 
+		} else {
+			*value[iPar] = work ;
+			range *= 0.995 ; 
+		}
+		printf("%3d ipar=%2d range=%9.5f delta=%9.5f y0=%10.7f %3d %3d\n",i,iPar,range,delta,y0,nOk,i-nOk ) ;
+	} while (i++ < 500 ) ;
+	for( i = 0 ; i < nPar ; i++) printf("%8.4f", *value[i] ) ;
+	printf("\n") ;
+}
+void search( int nVel )
+{
+	int i,nPar,iPass ;
+	double *value[50], **vp, *work,x1,x2,x3,y1,y2,y3  ;	
+	double xstep, damper,limit ;
+	double a,b,c,xx ;
+	damper = 0.3 ;
+	limit = 0.2 ;
+	xstep = 0.04 ;
+	vp = value ;
+	for (i = 0; i < nVel ; i++ ) {
+		*vp++ = mp.v+i	;
+		*vp++ = ms.v+i	;
+	}
+	nPar = 2*nVel ;
+	for( iPass = 0 ; iPass < 10 ; iPass++ ) {
+	    for( i = 0 ; i < nPar ; i++) {
+		work = value[i] ;
+		x2 = *work ;
+		y2 = processVel(solutions,nSol) ;
+		x1 = x2 - xstep ;
+		*work = x1 ;
+		y1 = processVel(solutions,nSol) ;
+		x3 = x2 + xstep ;
+		*work = x3 ;
+		y3 = processVel(solutions,nSol) ;
+		c = 0.5*(y3+y1) - y2 ;
+		b = 0.5*(y3-y1) ;
+		a = y2  ;
+		xx = -0.5*b*xstep/c ;
+		if( xx > limit ) xx = limit ;
+		if( xx < -limit ) xx = -limit ;
+		*work = x2 + damper * xx ;
+	        printf("%9.5f%9.5f%9.5f |",y2,xx,c) ;
+	     }
+	     printf("\n") ;
+	}
+	printVelModel(&mp) ;
+}
+void getData()
 {
 	nEvent = readTable("event", sizeof(Event),(void *) &events) ;
 	events[nEvent].index = INDEXEND ;
@@ -252,19 +414,46 @@ void doIt()
 	checkPhases() ;
 	countEvents() ;
 	makeSolutions() ;
+}
+void doIt()
+{
+	getData() ;
 /*	printP() ; */
 	initVel() ;
 	pass1() ;
+/*	serach(6) ;    */
+	searchRandom(6) ;
 }
-
+void doLocations()
+{
+	int i ;
+	Solution *lp ;
+	Phase *pp ;
+	getData() ;
+	initVel() ;
+	pass1() ;
+/*	if( rayTrace == 0 )  vFInitFromMemory() ;  */
+	for(i = 0  ; i < nSol ; i++ ) {
+		lp = solutions + i ;
+		pp = lp->phase ;
+		locate(lp,pp) ;
+	}
+}
+void testing()
+{
+	testLimits(8) ;
+}
 int main( int ac, char **av)
 {
 int cc ;
 	extern char *optarg ;	
 	feenableexcept(FE_INVALID) ;
-	shLogLevel = 4 ;
-	while( EOF != ( cc = getopt(ac,av,"e:z:Z:b:B:l:L:n:N:m:i:I:D:"))) {
+	shLogLevel = 2 ;
+	rayTrace = 1 ;
+	while( EOF != ( cc = getopt(ac,av,"td:e:z:Z:b:B:l:L:n:N:m:i:I:D:vsT"))) {
 		switch(cc) {
+		case 'd' : shLogLevel = atoi(optarg) ; break ;
+/*		case 't' : rayTrace = 0 ; break ; */
 		case 'e' : baseName = optarg ; break ;
 		case 'z' : zMin = atof(optarg) ;  break ;
 		case 'Z' : zMax = atof(optarg) ;  break ;
@@ -275,14 +464,20 @@ int cc ;
 		case 'n' : phasesMin = atoi(optarg) ; break ;
 		case 'N' : phasesMax = atoi(optarg) ; break ;
 		case 'm' : minSorP = atoi(optarg) ; break ;
-		case 'i' : indexMin = atoll(optarg) ; break ;
-		case 'I' : indexMax = atoll(optarg) ; break ;
+		case 'i' : indexMin = atoll(optarg) ; 
+			/* appending zeroes to index limits as needed */
+			while (indexMin < INDEXEND/10 ) indexMin *= 10 ; 
+			break ;
+		case 'I' : indexMax = atoll(optarg)  ;
+			while (indexMax < INDEXEND/10 ) indexMax *= 10 ;
+			; break ;
 		case 'D' : distMax = atof(optarg) ; break ;
+/* action flags  */
+		case 'v' : doIt() ; break ;
+		case 's' : doLocations() ; break ;
+		case 'T' : testing() ; break ;
 	}}
-	while (indexMin < INDEXEND/10 ) indexMin *= 10 ; /* appending zeroes to index limits as neede */
-	while (indexMax < INDEXEND/10 ) indexMax *= 10 ;
 	printf("Index range: %ld %ld Phase range: %d %d\n", indexMin, indexMax, phasesMin,phasesMax ) ;
-	doIt() ;
 	return 0 ;
 }
 

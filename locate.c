@@ -32,8 +32,9 @@ void testFit(char type, double x, double z, double t, double dx, double dz)
 	else model = vFNModelS ;
 */
 	tt = vFtimeFromXZ(type,x,z,&dtdx,&dtdz) ;
-	if( (count % 400) == 0 )fprintf(stderr,"xz = %10.4f %10.4f tt= %10.4f %10.4f dx %10.4f %10.4f dz %10.4f %10.4f\n"
-		,x,z,t,tt,dtdx,dx,dtdz,dz) ;
+	if( (shLogLevel > 5) && ((count % 400) == 0 )) fprintf(stdout,
+		"xz = %10.4f %10.4f tt= %10.4f %10.4f dx %10.4f %10.4f dz %10.4f %10.4f\n",
+		x,z,t,tt,dtdx,dx,dtdz,dz) ;
 }
 int  locate( Solution *sol, Phase *pp )
 {
@@ -61,7 +62,10 @@ int  locate( Solution *sol, Phase *pp )
 		p=pp+i ;
 		s= p->statP ;
 		distance = sDistance(sol->lat,s->lat,sol->lon - s->lon) ;
-		if(distance > vFXMax * 0.9 ) np = i ;
+		if(distance > vFXMax * 0.9 ) {
+			fprintf(stderr,"%ld %s distance = %8.2f\n", p->index, p->station,distance ) ;
+	/*		np = i ; */
+		}
 	}
 	if( np > MAXPHASES ) rLog(1,"locate: more than %d phases", (void*) MAXPHASES ) ;
 	x0[0] = 0.0 ;         /* origin time, sec */
@@ -86,7 +90,7 @@ int  locate( Solution *sol, Phase *pp )
 		  ttz = timeFromDist(vm,distance,x0[3]+dz,&rayp,&dtdx,&dxdp) +x0[0] ;
 		  dtdz = (ttz-tt)/dz ;
 		} else tt = vFtimeFromXZ(p->type,distance,x0[3],&dtdx,&dtdz) ; 
-/*		testFit(p->type,distance,x0[3],tt,dtdx,dtdz) ;  */
+		testFit(p->type,distance,x0[3],tt,dtdx,dtdz) ;  
 		dtdla = dtdx * ( x0[1] - s->lat )*km2lat*km2lat /  distance  ;
 		dtdlo = dtdx * ( x0[2] - s->lon )*km2lon*km2lon /  distance  ;
 		dx[0] = 1.0 ; dx[1] = dtdla ; dx[2] = dtdlo ; dx[3] = dtdz ;
@@ -120,13 +124,15 @@ int  locate( Solution *sol, Phase *pp )
 	   if(shLogLevel >  3 )  {
 	  	 printModel(" x ",x) ;
 		 printModel(" x0",x0) ;
+		 printf("%ld iter = %2d  stdP =%9.6f stdS =%9.6f azi=%5.0f lenx=%7.3f damp=%7.2f\n",
+			sol->index,iter,stdP,stdS,azi,lenx,damp) ;
 	   }
 	   stdP = sqrt(sumP/(np-ns)) ;
 	   stdS = sqrt(sumS/ns) ;
-	   if(shLogLevel > 3 ) 
-	     printf("iter = %2d  stdP =%9.6f stdS =%9.6f azi=%5.0f lenx=%7.3f damp=%7.2f\n",iter,stdP,stdS,azi,lenx,damp) ;
 	   if( lenx < 0.05 ) break ;
 	}
+	if(shLogLevel > 3 ) printf("%ld iter = %2d  stdP =%9.6f stdS =%9.6f azi=%5.0f lenx=%7.3f damp=%7.2f\n",
+			sol->index,iter,stdP,stdS,azi,lenx,damp) ;
 	sol->nP = np - ns ;
 	sol->nS = ns ;
 	sol->nIter = iter ;

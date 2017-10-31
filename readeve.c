@@ -8,6 +8,7 @@
 
 char *outputBaseName = "testing" ;
 char *rootName = "/data/bergth/4D/testing/sk1/1998/apr" ;
+double maxResidual = 1.1 ;
 
 int month2number( char *monthName)
 {
@@ -56,7 +57,7 @@ void readEFile( char *ename )
 	static size_t n=100 ;
 	int len,j,iPhase ;
 	char line[100], buffer[100] ;
-	double eventSec, sourceTime,phaseSec,eventFrac,phaseFrac,dist,ttime ;
+	double eventSec, sourceTime,phaseSec,phaseRes,eventFrac,phaseFrac,dist,ttime ;
 	static Event ev ;
 	static Phase phase ;
 	Station *sp ;
@@ -116,6 +117,7 @@ void readEFile( char *ename )
 		tm.tm_hour = atoi(line+6) ;
 		tm.tm_min  = atoi(line+9) ;
 		phaseSec = atof(line+12);
+		phaseRes = atof(line+17);
 		tm.tm_sec =  trunc(phaseSec) ;
 		phaseFrac = phaseSec - tm.tm_sec ;
 		ttPhase = mktime(&tm) ;
@@ -132,7 +134,7 @@ void readEFile( char *ename )
 		if( shLogLevel > 4 ) 
 			printf(" hour,min sec ttime %d %d %f %d %f %f %f %s\n",
 			tm.tm_hour,tm.tm_min,phaseSec,ttPhase-ttEvent,dist,ttime,dist/ttime,sp->name) ;
-		writePhase(&phase) ;
+		if( fabs(phaseRes) < maxResidual ) writePhase(&phase) ;
 		cp = fgets(line,n,efile) ;
 	}
 	fclose(efile) ;

@@ -48,3 +48,16 @@ R         rms resdiual difference
 
 Nov 18:   Added handling of vertical rays (p = 0)
 Nov 29:	Set up dayly backup to hekla using at and rsync.
+
+2017:
+Okt
+25/10	Discussion with Ingi, who had talked with Menke.
+If using direct raytracing, must constrain from models with triplication or hidden layers.
+A reliable test for triplication would be useful, one could check for dx/dp, must be positive and continous. It
+is relatively easy to implement contstraints using Monte Carlo.
+
+26/10
+Need to write a routine that tests for triplication on traveltime curve. 
+It could be by looking for minimum value of dx/dp in a depth or ray parameter interval.
+A sufficient condition is that gradient not be allowed to increase.
+Aq
