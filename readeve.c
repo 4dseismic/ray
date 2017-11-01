@@ -117,7 +117,7 @@ void readEFile( char *ename )
 		tm.tm_hour = atoi(line+6) ;
 		tm.tm_min  = atoi(line+9) ;
 		phaseSec = atof(line+12);
-		phaseRes = atof(line+17);
+		phaseRes = atof(line+18);
 		tm.tm_sec =  trunc(phaseSec) ;
 		phaseFrac = phaseSec - tm.tm_sec ;
 		ttPhase = mktime(&tm) ;
@@ -127,13 +127,15 @@ void readEFile( char *ename )
 		sp = lookUpStation(line+1) ;
 		phase.index = ev.index ;
 		phase.pTime = ttPhase-ttIndex + phaseFrac ;
+		phase.residual = phaseRes ;
 		phase.type = (255-32) & line[5] ;   /* upper case */
 		phase.iPhase = iPhase++ ;
 		strncpy(phase.station,line+1,3) ;
 		phase.station[3] = 0 ;
 		if( shLogLevel > 4 ) 
-			printf(" hour,min sec ttime %d %d %f %d %f %f %f %s\n",
-			tm.tm_hour,tm.tm_min,phaseSec,ttPhase-ttEvent,dist,ttime,dist/ttime,sp->name) ;
+			printf(" hour,min sec ttime phaseRes %d %d %f %2d %f %f %8.3f %8.3f %s\n",
+			tm.tm_hour,tm.tm_min,phaseSec,ttPhase-ttEvent,dist,ttime,
+			phaseRes,dist/ttime,sp->name) ;
 		if( fabs(phaseRes) < maxResidual ) writePhase(&phase) ;
 		cp = fgets(line,n,efile) ;
 	}

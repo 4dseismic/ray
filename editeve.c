@@ -52,13 +52,27 @@ int readTable( char *suffix, int size, void **addr )
 	n = read(fd,*addr,space) ; 
 	return nRec ;
 }
+void printS()
+{
+	int i ;
+	Solution *p ;
+	if( shLogLevel < 6 ) return ;
+	p = solutions ;
+	for( i = 0 ; i < nSol ; i++) {
+		printf("%3d %ld %8.3f %8.4f %8.4f %8.1f %3d %3d %3d\n",
+			i,p->index,p->time,p->lat,p->lon,p->depth,p->nPhase,p->nP,p->nS  ) ;
+		p++ ;
+	}
+}
 void printE()
 {
 	int i ;
 	Event *p ;
+	if( shLogLevel < 6 ) return ;
 	p = events ;
-	for( i = 0 ; i < 8 ; i++) {
-		printf(" %ld %8.3f\n",p->index,p->time  ) ;
+	for( i = 0 ; i < nEvent ; i++) {
+		printf("%3d %ld %8.3f %8.4f %8.4f %8.1f\n",
+			i,p->index,p->time,p->lat,p->lon,p->depth  ) ;
 		p++ ;
 	}
 }
@@ -66,6 +80,7 @@ void printP()
 {
 	int i,n ;
 	Phase *p ;
+	if( shLogLevel < 6 ) return ;
 	p = phases ;
 	n = nPhase ;
 	if( n > 500 ) n = 500 ;
@@ -213,7 +228,7 @@ void makeSolutions()
 		ep++ ;
 		pp = pp1 ;
 	}
-	free(events) ;
+/*	free(events) ; */
 }
 initVel()
 {
@@ -234,7 +249,7 @@ void pass1()
 		lp->nIter = 1 ;
 		pp = lp->phase ;
 		locate( lp,pp) ;	
-		if(shLogLevel > 1 )
+		if(shLogLevel > 3 )
 		   printf("nP=%3d nS=%3d nIter=%3d stdP=%10.4f stdS=%10.4f length=%10.4f\n",
 			lp->nP,lp->nS,lp->nIter,lp->stdP, lp->stdS,lp->length) ;
 		sumi += lp->nIter ;
@@ -401,19 +416,22 @@ void search( int nVel )
 void getData()
 {
 	nEvent = readTable("event", sizeof(Event),(void *) &events) ;
-	events[nEvent].index = INDEXEND ;
 	nPhase = readTable("phase", sizeof(Phase),(void *) &phases) ;
-	phases[nPhase].index = INDEXEND ;
+	printE() ;
 /*	printP() ;
 	printE() ; */
 	qsort(phases,nPhase,sizeof(Phase), comparePhase ) ; 
-	qsort(events,nEvent,sizeof(Event), comparePhase ) ; 
+	qsort(events,nEvent,sizeof(Event), compareEvent ) ; 
+	printP() ;
 /*	printP() ;
 	printE() ; */
 	printf("%d events, %d phases\n",nEvent,nPhase) ;
 	checkPhases() ;
 	countEvents() ;
+	printf("nEvent=%d nSol=%d\n",nEvent,nSol) ;
 	makeSolutions() ;
+	printS() ;
+	printP() ;
 }
 void doIt()
 {

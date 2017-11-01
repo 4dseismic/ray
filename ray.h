@@ -17,7 +17,7 @@ typedef struct {
 	long long index ;
 	Station *statP ;
 	double pTime ;
-	double weight ;
+	double residual ; 
 	short iPhase ;
 	char type ;
 	char station[4] ;

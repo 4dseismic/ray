@@ -56,7 +56,8 @@ E = readeve.o ray.o  stations.o
 readeve : $E
 	cc -g $E -lm -o readeve
 
-V = editeve.o locate.o shuffle.o $L
+V = editeve.o locate.o shuffle.o ray.o distance.o stations.o velfit.o golubc.o
+$E $V : ray.h Makefile
 editeve : $V
 	cc -g $V -lm -o editeve -lproj
 
