@@ -129,7 +129,7 @@ int  locate( Solution *sol, Phase *pp )
 	   }
 	   stdP = sqrt(sumP/(np-ns)) ;
 	   stdS = sqrt(sumS/ns) ;
-	   if( lenx < 0.05 ) break ;
+	   if( lenx < 0.001 ) break ;
 	}
 	if(shLogLevel > 3 ) printf("%ld iter = %2d  stdP =%9.6f stdS =%9.6f azi=%5.0f lenx=%7.3f damp=%7.2f\n",
 			sol->index,iter,stdP,stdS,azi,lenx,damp) ;
@@ -141,6 +141,10 @@ int  locate( Solution *sol, Phase *pp )
 	sol->length = lenx ;
 	sol->stdP = stdP ;
 	sol->stdS = stdS ;
+	sol->time  = x0[0] ;
+	sol->lat   = x0[1] ;
+	sol->lon   = x0[2] ;
+	sol->depth = x0[3] ;
 	return np ;
 }
 

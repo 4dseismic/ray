@@ -60,4 +60,8 @@ is relatively easy to implement contstraints using Monte Carlo.
 Need to write a routine that tests for triplication on traveltime curve. 
 It could be by looking for minimum value of dx/dp in a depth or ray parameter interval.
 A sufficient condition is that gradient not be allowed to increase.
-Aq
+
+6/11
+Information to be printed out from editeve:
+	residual norm from Slunga.
+	command line

@@ -92,6 +92,7 @@ void readEFile( char *ename )
 	}
 	cp = fgets(line,n,efile) ;
 	tm.tm_year = atoi(line+12) ;
+	if( tm.tm_year < 70 ) tm.tm_year += 100 ;
 	tm.tm_mon = atoi(line+15) - 1 ;
 	tm.tm_mday= atoi(line+18) ;
 	tm.tm_hour= atoi(line+23) ;

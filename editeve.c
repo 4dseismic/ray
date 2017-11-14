@@ -19,6 +19,7 @@ int nEvent, nPhase, nSol ;
 extern VelModel mp,ms ;
 
 /*		Default values */
+char *velPrefix = "sil" ;
 char *baseName = "testing" ;
 int phasesMin = 8 ;
 int phasesMax = 999 ;
@@ -32,7 +33,95 @@ double lonMax = -19.4 ;
 double distMax  = 90.0 ;
 long long indexMin = 19910700000000000 ;
 long long indexMax = INDEXEND ;
-
+int nLayers = 6 ;
+void printParameters( FILE *f)
+{
+	fprintf(f,"velPrefix = %s baseName = %s\n",velPrefix,baseName) ;
+	fprintf(f,"phases from %d to %d minimum S or P phases %d\n",
+		phasesMin,phasesMax,minSorP) ;
+	fprintf(f,"depths from %8.3f to %8.3f\n",zMin,zMax) ;
+	fprintf(f,"latitude from %8.4f to %8.4f\n",latMin,latMax) ;
+	fprintf(f,"longitude from %8.4f to %8.4f\n",lonMin,lonMax) ;
+	fprintf(f,"index from %ld to %ld\n",indexMin,indexMax) ;
+	fprintf(f,"nLayers = %d, distMax=%8.2f\n",nLayers,distMax) ;
+}
+void printSolutions() 
+{
+	int i ;
+	Solution *p ;
+	for( i = 0 ; i < nSol ; i++) {
+	  p = solutions + i ;
+	  printf("%ld %8.4f %8.3f %8.3f %8.3f" ,
+		p->index, p->time, p->lon, p->lat, p->depth) ;
+	  printf("%2d %2d %2d %6.3f %6.3f %6.3f",
+		p->nP, p->nS, p->nIter, p->stdP,p->stdS, p->length ) ; 
+	printf("\n") ;
+	}
+}
+int compareDouble( const void *p1, const void *p2 )
+{
+	double d1,d2 ;
+	d1 = *( double *) p1 ;
+	d2 = *( double *) p2 ;
+	if( d2 < d1 ) return 1 ;
+	if( d2 > d1 ) return -1 ;
+	return 0 ;
+}
+double *sortDouble(int n, double *base, int stride, int nPrint )
+{
+	double *work, *fp ;
+	char *cp ;
+	int i,n0,n1 ;
+	cp = ( char*) base ;
+	work = malloc( n * sizeof(double)) ;
+	for( i = 0 ; i < n ; i++ ) {
+		fp = ( double *) cp ;
+		work[i] = *fp ;
+		cp += stride ;
+	}
+	qsort(work,n,sizeof(double),compareDouble) ; 
+	if( nPrint == 0 ) return work ;
+	n0 = 0 ; n1 = n ;
+	if( nPrint > 0 ) { 
+		n0 = n - nPrint ;
+		if( n0 < 0 ) n0 = 0  ;
+	} else {
+		n1 = -nPrint ;
+		if( n1 > n ) n1 = n ;
+	}
+	for( i = n0 ; i < n1 ; i++) printf("%8.3f",work[i]) ;
+	printf("\n") ;
+	return work ;
+}
+int compareInt( const void *p1, const void *p2 )
+{
+	return  *(int *) p1 -  *(int *) p2 ;
+}
+int *sortInt(int n, int *base, int stride, int nPrint )
+{
+	int *work, *fp ;
+	char *cp  ;
+	int i,n0,n1 ;
+	cp = ( char*) base ;
+	work = malloc( n * sizeof(int)) ;
+	for( i = 0 ; i < n ; i++ ) {
+		fp = ( int *) cp ;
+		work[i] = *fp ;
+		cp += stride ;
+	}
+	qsort(work,n,sizeof(int),compareInt) ; 
+	n0 = 0 ; n1 = n ;
+	if( nPrint > 0 ) { 
+		n0 = n - nPrint ;
+		if( n0 < 0 ) n0 = 0  ;
+	} else {
+		n1 = -nPrint ;
+		if( n1 > n ) n1 = n ;
+	}
+	for( i = n0 ; i < n1 ; i++) printf("%6d",work[i]) ;
+	printf("\n") ;
+	return work ;
+}
 int readTable( char *suffix, int size, void **addr ) 
 {
 	int fd, space, n, nRec ;
@@ -66,11 +155,13 @@ void printS()
 }
 void printE()
 {
-	int i ;
+	int i,nn ;
 	Event *p ;
 	if( shLogLevel < 6 ) return ;
 	p = events ;
-	for( i = 0 ; i < nEvent ; i++) {
+	nn = nEvent ;
+	if( nn > 10 ) nn = 10 ;
+	for( i = 0 ; i < nn ; i++) {
 		printf("%3d %ld %8.3f %8.4f %8.4f %8.1f\n",
 			i,p->index,p->time,p->lat,p->lon,p->depth  ) ;
 		p++ ;
@@ -232,8 +323,11 @@ void makeSolutions()
 }
 initVel()
 {
-	initVelModel(20,&mp) ; readVelModel("silp.vel",&mp) ; 
-	initVelModel(20,&ms) ; readVelModel("sils.vel",&ms) ; 
+	char pv[60],sv[60] ;
+	sprintf(pv,"%sp.vel",velPrefix ) ;
+	sprintf(sv,"%ss.vel",velPrefix ) ;
+	initVelModel(20,&mp) ; readVelModel(pv,&mp) ; 
+	initVelModel(20,&ms) ; readVelModel(sv,&ms) ; 
 	
 /*	vFInitFromMemory() ; */
 }
@@ -249,7 +343,8 @@ void pass1()
 		lp->nIter = 1 ;
 		pp = lp->phase ;
 		locate( lp,pp) ;	
-		if(shLogLevel > 3 )
+		if(shLogLevel > 0 )
+		   printf("time=%8.3f ",lp->time ) ;
 		   printf("nP=%3d nS=%3d nIter=%3d stdP=%10.4f stdS=%10.4f length=%10.4f\n",
 			lp->nP,lp->nS,lp->nIter,lp->stdP, lp->stdS,lp->length) ;
 		sumi += lp->nIter ;
@@ -282,6 +377,7 @@ double processVel( Solution *sol, int n )
 		locate( lp,pp) ;
 		sst +=  ( 0.5 * lp->stdP + 0.3 * lp->stdS ) ;
 	}
+	(void) sortInt(nSol,&(solutions->nIter),sizeof(Solution),10 );
 	return sst/n ;
 }
 double lowerParLimit( ipar )
@@ -429,6 +525,7 @@ void getData()
 	checkPhases() ;
 	countEvents() ;
 	printf("nEvent=%d nSol=%d\n",nEvent,nSol) ;
+	printE() ;
 	makeSolutions() ;
 	printS() ;
 	printP() ;
@@ -440,7 +537,7 @@ void doIt()
 	initVel() ;
 	pass1() ;
 /*	serach(6) ;    */
-	searchRandom(6) ;
+	searchRandom(nLayers) ;
 }
 void doLocations()
 {
@@ -457,6 +554,27 @@ void doLocations()
 		locate(lp,pp) ;
 	}
 }
+void printReport()
+{
+/*	(void) sortDouble(nSol,&(solutions->lat),sizeof(Solution) ); */
+	printf("nIter : ") ;
+	(void) sortInt(nSol,&(solutions->nIter),sizeof(Solution),10 );
+	printf("nP    : ") ;
+	(void) sortInt(nSol,&(solutions->nP),sizeof(Solution),10 );
+	printf("nP -  : ") ;
+	(void) sortInt(nSol,&(solutions->nP),sizeof(Solution),-10 );
+	printf("nS    : ") ;
+	(void) sortInt(nSol,&(solutions->nS),sizeof(Solution),10 );
+	printf("nS -  : ") ;
+	(void) sortInt(nSol,&(solutions->nS),sizeof(Solution),-10 );
+	printf("length: ") ;
+	(void) sortDouble(nSol,&(solutions->length),sizeof(Solution), 10) ;
+	printf("depth : ") ;
+	(void) sortDouble(nSol,&(solutions->depth),sizeof(Solution),  5 ) ;
+	printf("depth-: ") ;
+	(void) sortDouble(nSol,&(solutions->depth),sizeof(Solution), -5 ) ;
+	printParameters(stdout) ;
+}
 void testing()
 {
 	testLimits(8) ;
@@ -468,7 +586,7 @@ int cc ;
 	feenableexcept(FE_INVALID) ;
 	shLogLevel = 2 ;
 	rayTrace = 1 ;
-	while( EOF != ( cc = getopt(ac,av,"td:e:z:Z:b:B:l:L:n:N:m:i:I:D:vsT"))) {
+	while( EOF != ( cc = getopt(ac,av,"td:e:z:Z:b:B:l:L:n:N:m:i:I:D:vspTM:V:"))) {
 		switch(cc) {
 		case 'd' : shLogLevel = atoi(optarg) ; break ;
 /*		case 't' : rayTrace = 0 ; break ; */
@@ -490,12 +608,15 @@ int cc ;
 			while (indexMax < INDEXEND/10 ) indexMax *= 10 ;
 			; break ;
 		case 'D' : distMax = atof(optarg) ; break ;
+		case 'M' : nLayers = atoi(optarg) ; break ;
+		case 'V' : velPrefix = optarg ; break ;
 /* action flags  */
 		case 'v' : doIt() ; break ;
 		case 's' : doLocations() ; break ;
 		case 'T' : testing() ; break ;
+		case 'p' : printSolutions() ; break ;
 	}}
-	printf("Index range: %ld %ld Phase range: %d %d\n", indexMin, indexMax, phasesMin,phasesMax ) ;
+	printReport() ;
 	return 0 ;
 }
 
