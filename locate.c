@@ -141,11 +141,14 @@ int  locate( Solution *sol, Phase *pp )
 	sol->length = lenx ;
 	sol->stdP = stdP ;
 	sol->stdS = stdS ;
+/*
+	if( iter >= 35 ) return iter ;
 	sol->time  = x0[0] ;
 	sol->lat   = x0[1] ;
 	sol->lon   = x0[2] ;
 	sol->depth = x0[3] ;
-	return np ;
+*/
+	return iter ;
 }
 
 #ifdef TEST

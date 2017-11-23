@@ -362,8 +362,29 @@ void pass1()
 	printf("leave pass1: nSol = %d\n",nSol);
 
 }
-
-double processVel( Solution *sol, int n )
+double processVel() 
+{
+	Solution work, *lp, *op ;
+	Phase  *pp ;
+	int i,n ;
+	double sst ;
+	n = nSol ;
+	sst = 0.0 ;
+	op = solutions ;
+	for ( i = 0 ; i < n ; i++ ) {
+		lp = solutions + i ;
+		work = *lp ;
+		pp = work.phase ;
+		locate( &work,pp) ;
+		 if( work.nIter < 350 ) {
+			sst +=  ( 0.5 * work.stdP + 0.3 * work.stdS ) ;
+			*op++ = work ;
+		}
+	}
+	nSol = op-solutions ;
+	return sst/nSol ;
+}
+double processVelOld( Solution *sol, int n )
 {
 	Solution *lp ;
 	Phase *pp ;
@@ -426,7 +447,7 @@ void testLimits(int nvel)
 }
 void searchRandom( int nVel )
 {
-	int i, nPar, iPar, nOk ;
+	int i, nPar, iPar, nOk, lastNSol ;
 	double *value[50],**vp, work,y0,y1  ;
 	double range,delta,rangeScale ;
 	double upperL, lowerL ;
@@ -442,7 +463,8 @@ void searchRandom( int nVel )
 	nOk = 0 ;
 	nPar = 2*nVel ;
 	range = 0.049 ;
-	y0 = processVel(solutions,nSol) ; 
+	range = 0.002 ;
+	y0 = processVel() ; 
 	do {
 /*		iPar = iPar + 1 + random() % (nPar-1) ; */
 		iPar = shuffle(nPar) ;
@@ -456,16 +478,20 @@ void searchRandom( int nVel )
 		*value[iPar] = lowerL + (random() / rangeScale) ;
 		delta = *value[iPar] - work ;
 /*		printf("i=%d iPar= %d delta=%8.2f \n",i,iPar,delta) ; */
-		y1 = processVel(solutions,nSol) ; 
-		if( y1 < y0 ) {
+		lastNSol = nSol ;
+		y1 = processVel() ; 
+		if(( y1 < y0 ) && ( nSol == lastNSol )) {
 			nOk++ ;
 			y0 =  y1 ;
 			range *= 1.08 ; 
 		} else {
 			*value[iPar] = work ;
+			if( nSol != lastNSol ) 
+				y0 = processVel() ;
 			range *= 0.995 ; 
 		}
-		printf("%3d ipar=%2d range=%9.5f delta=%9.5f y0=%10.7f %3d %3d\n",i,iPar,range,delta,y0,nOk,i-nOk ) ;
+		printf("%3d ipar=%2d range=%9.5f delta=%9.5f y0=%10.7f %3d %3d %4d\n",
+			i,iPar,range,delta,y0,nOk,i-nOk,nSol ) ;
 	} while (i++ < 500 ) ;
 	for( i = 0 ; i < nPar ; i++) printf("%8.4f", *value[i] ) ;
 	printf("\n") ;
@@ -575,6 +601,34 @@ void printReport()
 	(void) sortDouble(nSol,&(solutions->depth),sizeof(Solution), -5 ) ;
 	printParameters(stdout) ;
 }
+void printIndexTable()
+{
+	Event *ep ;
+	static struct tm tm ;
+	int i ;
+	long long tw ;
+	time_t ttIndex ;
+	char *cp ;
+	nEvent = readTable("event", sizeof(Event),(void *) &events) ;
+	qsort(events,nEvent,sizeof(Event), compareEvent ) ; 
+	printf("printIndexTable: nEvent = %d\n",nEvent) ;
+	for( i = 0 ; i < nEvent ; i++) {
+		ep = events+i ;
+		tw = ep->index / 1000 ;
+		tm.tm_sec  = tw%100 ;	tw /= 100 ;
+		tm.tm_min  = tw%100 ;	tw /= 100 ;
+		tm.tm_hour = tw%100 ;	tw /= 100 ;
+		tm.tm_mday  = tw%100 ;	tw /= 100 ;
+		tm.tm_mon  = tw%100 ;	tw /= 100 ;
+		tm.tm_year = tw - 1900 ;	
+		ttIndex = mktime(&tm) ;
+		ttIndex += floor(ep->time) ;
+		tm = *gmtime(&ttIndex) ;
+		cp = asctime(&tm) ;
+		printf("%ld %ld %9.3f %s",ep->index,ep->index/1000,ep->time,cp) ;
+	}
+	exit(0) ;
+}
 void testing()
 {
 	testLimits(8) ;
@@ -586,7 +640,7 @@ int cc ;
 	feenableexcept(FE_INVALID) ;
 	shLogLevel = 2 ;
 	rayTrace = 1 ;
-	while( EOF != ( cc = getopt(ac,av,"td:e:z:Z:b:B:l:L:n:N:m:i:I:D:vspTM:V:"))) {
+	while( EOF != ( cc = getopt(ac,av,"td:e:z:Z:b:B:l:L:n:N:m:i:I:D:vspTM:V:X"))) {
 		switch(cc) {
 		case 'd' : shLogLevel = atoi(optarg) ; break ;
 /*		case 't' : rayTrace = 0 ; break ; */
@@ -615,6 +669,7 @@ int cc ;
 		case 's' : doLocations() ; break ;
 		case 'T' : testing() ; break ;
 		case 'p' : printSolutions() ; break ;
+		case 'X' : printIndexTable() ; break ;
 	}}
 	printReport() ;
 	return 0 ;
