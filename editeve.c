@@ -33,6 +33,7 @@ double lonMax = -19.4 ;
 double distMax  = 90.0 ;
 long long indexMin = 19910700000000000 ;
 long long indexMax = INDEXEND ;
+char *indexList ;
 int nLayers = 6 ;
 void printParameters( FILE *f)
 {
@@ -121,6 +122,9 @@ int *sortInt(int n, int *base, int stride, int nPrint )
 	for( i = n0 ; i < n1 ; i++) printf("%6d",work[i]) ;
 	printf("\n") ;
 	return work ;
+}
+void readIndexList()
+{
 }
 int readTable( char *suffix, int size, void **addr ) 
 {
@@ -251,7 +255,16 @@ void countEvents()
 	}
 	printf("Of %d events %d passed\n",nEvent,nSol) ;
 }
-void checkPhases() /* remove phases to far from source. Distance estimated from phase times.*/
+void checkPhases()
+{
+	int ip ;
+	Phase *pp ;
+	for( ip = 0 ; ip < nPhase ; ip++) {
+		pp = phases + ip ;
+		pp->statP = lookUpStation( pp->station ) ;
+	}
+}
+void checkPhasesX() /* OBSOLETE remove phases to far from source. Distance estimated from phase times.*/
 {	
 	int ie,ip ;
 	double ttime,dist ;
@@ -550,6 +563,7 @@ void getData()
 	printf("%d events, %d phases\n",nEvent,nPhase) ;
 	checkPhases() ;
 	countEvents() ;
+	if( indexList ) readIndexList() ;
 	printf("nEvent=%d nSol=%d\n",nEvent,nSol) ;
 	printE() ;
 	makeSolutions() ;
@@ -601,6 +615,21 @@ void printReport()
 	(void) sortDouble(nSol,&(solutions->depth),sizeof(Solution), -5 ) ;
 	printParameters(stdout) ;
 }
+void printPhaseTable()
+{
+	Phase *pp ;
+	Station *sp ;
+	int i ;
+	nPhase = readTable("phase", sizeof(Phase),(void *) &phases) ;
+	printf("\nIn printPhaseTable: nPhase = %d\n",nPhase) ;
+	qsort(phases,nPhase,sizeof(Phase), comparePhase ) ;
+	for( i = 0 ; i < nPhase ; i++ ) {
+		pp = phases + i ;
+		 sp = pp->statP ; 
+		printf("%ld %s %c %8.3f\n",
+			pp->index,pp->station,pp->type, pp->pTime)  ; 
+	}
+}
 void printIndexTable()
 {
 	Event *ep ;
@@ -627,6 +656,7 @@ void printIndexTable()
 		cp = asctime(&tm) ;
 		printf("%ld %ld %9.3f %s",ep->index,ep->index/1000,ep->time,cp) ;
 	}
+	printPhaseTable() ;
 	exit(0) ;
 }
 void testing()
@@ -640,9 +670,10 @@ int cc ;
 	feenableexcept(FE_INVALID) ;
 	shLogLevel = 2 ;
 	rayTrace = 1 ;
-	while( EOF != ( cc = getopt(ac,av,"td:e:z:Z:b:B:l:L:n:N:m:i:I:D:vspTM:V:X"))) {
+	while( EOF != ( cc = getopt(ac,av,"twd:e:z:Z:b:B:l:L:n:N:m:i:I:r:D:vspTM:V:X"))) {
 		switch(cc) {
 		case 'd' : shLogLevel = atoi(optarg) ; break ;
+		case 'w' : locateSILWeight = 1 ; break ;
 /*		case 't' : rayTrace = 0 ; break ; */
 		case 'e' : baseName = optarg ; break ;
 		case 'z' : zMin = atof(optarg) ;  break ;
@@ -661,6 +692,7 @@ int cc ;
 		case 'I' : indexMax = atoll(optarg)  ;
 			while (indexMax < INDEXEND/10 ) indexMax *= 10 ;
 			; break ;
+		case 'r' : indexList = optarg ; break ;
 		case 'D' : distMax = atof(optarg) ; break ;
 		case 'M' : nLayers = atoi(optarg) ; break ;
 		case 'V' : velPrefix = optarg ; break ;
@@ -669,7 +701,7 @@ int cc ;
 		case 's' : doLocations() ; break ;
 		case 'T' : testing() ; break ;
 		case 'p' : printSolutions() ; break ;
-		case 'X' : printIndexTable() ; break ;
+		case 'X' : printIndexTable();  break ;
 	}}
 	printReport() ;
 	return 0 ;

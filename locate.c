@@ -11,6 +11,7 @@
 #include "ray.h"
 
 int rayTrace = 1 ;
+int locateSILWeight ;
 
 VelModel mp,ms ;
 void printModel( char *text, double *x ) 
@@ -57,6 +58,7 @@ int  locate( Solution *sol, Phase *pp )
 	p = pp ;
 	while( p->index == sol->index ) p++ ;
 	np = p-pp ;
+	printf("%ld np = %d sol->nPhase=%d\n",sol->index,np,sol->nPhase );
 	i = np ;
 	while( i-- ) {
 		p=pp+i ;
@@ -83,7 +85,10 @@ int  locate( Solution *sol, Phase *pp )
 		s = p->statP ;
 		dlon = x0[2] - s->lon ;
 		if( p->type == 'P' ) vm = &mp ; else vm = &ms ;
-		if( p->type == 'P' ) weight = 1.0 ; else weight = 0.8 ;
+		if( locateSILWeight ) weight = p->weight ;
+		else {
+			if( p->type == 'P' ) weight = 1.0 ; else weight = 0.8 ;
+		}
 		distance = sDistance(x0[1],s->lat,dlon) ;
 		if( rayTrace ) { 
 		  tt = timeFromDist(vm,distance,x0[3],&rayp,&dtdx,&dxdp) + x0[0] ;
@@ -120,6 +125,7 @@ int  locate( Solution *sol, Phase *pp )
 #define DAMP 1.0
 	   if(damp > DAMP) damp = DAMP ;
 	   if( damp*x[3] < -0.3 *x0[3] ) damp = -0.2*x0[3]/x[3] ;
+           if( iter > 10 ) damp -= 0.039*damp*(iter-10) ;
 	   for( j = 0 ; j < 4 ; j++) x0[j] += damp*x[j] ;
 	   if(shLogLevel >  3 )  {
 	  	 printModel(" x ",x) ;
@@ -129,7 +135,7 @@ int  locate( Solution *sol, Phase *pp )
 	   }
 	   stdP = sqrt(sumP/(np-ns)) ;
 	   stdS = sqrt(sumS/ns) ;
-	   if( lenx < 0.001 ) break ;
+	   if( lenx < 0.004 ) break ;
 	}
 	if(shLogLevel > 3 ) printf("%ld iter = %2d  stdP =%9.6f stdS =%9.6f azi=%5.0f lenx=%7.3f damp=%7.2f\n",
 			sol->index,iter,stdP,stdS,azi,lenx,damp) ;

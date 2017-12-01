@@ -2,6 +2,7 @@
 #define INDEXEND 29990101011647938 /* sentinel at end of tables */
 extern int shLogLevel ;
 extern double zBottom ;
+extern int locateSILWeight ;
 typedef struct {
 	int nVel ;
 	double *z ; /* depth  */
@@ -18,6 +19,7 @@ typedef struct {
 	Station *statP ;
 	double pTime ;
 	double residual ; 
+	double weight ;
 	short iPhase ;
 	char type ;
 	char station[4] ;

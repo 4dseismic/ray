@@ -439,7 +439,7 @@ double timeFromDist( VelModel *m, double x, double z, double *p, double *dtdx, d
 			pp = 0.5*(pNew + p1 ) ;
 			xx = traceUD(mode,pp,z,m,&tt) ;
 		}
-		if( fabs(xx-x) < 1.e-5 ) break ;
+		if( fabs(xx-x) < 3.e-5 ) break ;
 		dxdt = ( xx-xNew)/(tt-tOld) ;
 		pOld = pNew; xOld = xNew ;
 		tOld = tt ;
