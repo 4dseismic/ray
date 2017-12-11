@@ -58,7 +58,7 @@ int  locate( Solution *sol, Phase *pp )
 	p = pp ;
 	while( p->index == sol->index ) p++ ;
 	np = p-pp ;
-	printf("%ld np = %d sol->nPhase=%d\n",sol->index,np,sol->nPhase );
+/*	printf("%ld np = %d sol->nPhase=%d\n",sol->index,np,sol->nPhase ); */
 	i = np ;
 	while( i-- ) {
 		p=pp+i ;
@@ -70,7 +70,7 @@ int  locate( Solution *sol, Phase *pp )
 		}
 	}
 	if( np > MAXPHASES ) rLog(1,"locate: more than %d phases", (void*) MAXPHASES ) ;
-	x0[0] = 0.0 ;         /* origin time, sec */
+	x0[0] = sol->time ;         /* origin time, sec */
 	x0[1] = sol->lat ;    /* latitude, degrees */
 	x0[2] = sol->lon ;	/* longitude, degrees */
 	x0[3] = sol->depth;	/* depth, km */
@@ -135,7 +135,7 @@ int  locate( Solution *sol, Phase *pp )
 	   }
 	   stdP = sqrt(sumP/(np-ns)) ;
 	   stdS = sqrt(sumS/ns) ;
-	   if( lenx < 0.004 ) break ;
+	   if( lenx < 0.001 ) break ;
 	}
 	if(shLogLevel > 3 ) printf("%ld iter = %2d  stdP =%9.6f stdS =%9.6f azi=%5.0f lenx=%7.3f damp=%7.2f\n",
 			sol->index,iter,stdP,stdS,azi,lenx,damp) ;
@@ -147,13 +147,11 @@ int  locate( Solution *sol, Phase *pp )
 	sol->length = lenx ;
 	sol->stdP = stdP ;
 	sol->stdS = stdS ;
-/*
 	if( iter >= 35 ) return iter ;
 	sol->time  = x0[0] ;
 	sol->lat   = x0[1] ;
 	sol->lon   = x0[2] ;
-	sol->depth = x0[3] ;
-*/
+	sol->depth = x0[3] ; 
 	return iter ;
 }
 

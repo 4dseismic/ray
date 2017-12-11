@@ -15,16 +15,18 @@
 Event *events ;
 Phase *phases ;
 Solution *solutions ;
-int nEvent, nPhase, nSol ;
+int nEvent, nPhase, nSol, nIndexList ;
 extern VelModel mp,ms ;
+long long *indexList ;
 
 /*		Default values */
+int nIterations = 500 ;
 char *velPrefix = "sil" ;
 char *baseName = "testing" ;
 int phasesMin = 8 ;
 int phasesMax = 999 ;
 int minSorP = 2 ;  /* minimum number of either p or s phases */
-double zMax = 8.0 ;
+double zMax = 15.0 ;
 double zMin = 2.5 ; 
 double latMin = 63.0 ;
 double latMax = 65.0 ;
@@ -33,7 +35,7 @@ double lonMax = -19.4 ;
 double distMax  = 90.0 ;
 long long indexMin = 19910700000000000 ;
 long long indexMax = INDEXEND ;
-char *indexList ;
+char *indexFile ;
 int nLayers = 6 ;
 void printParameters( FILE *f)
 {
@@ -123,8 +125,34 @@ int *sortInt(int n, int *base, int stride, int nPrint )
 	printf("\n") ;
 	return work ;
 }
+int compareLL( const void *p1, const void *p2 )
+{
+	long long *ip1,*ip2 ;
+	ip1 = ( long long * ) p1 ;
+	ip2 = ( long long * ) p2 ;
+	if ( *ip1 > *ip2 ) return 1  ;
+	if ( *ip1 < *ip2 ) return -1  ;
+	return 0 ;
+}
 void readIndexList()
 {
+	int fsize,fd,n,i,j ;
+	FILE *ff ;
+	fd = open(indexFile,O_RDONLY) ;
+	fsize = lseek(fd,0,SEEK_END) ;
+	close(fd) ;
+	n = 2 + fsize/18 ;
+	indexList = malloc(sizeof(long long)*n ) ;
+	ff = fopen(indexFile,"r") ;
+	for( i = 0 ; i < n ; i++) {
+		j = fscanf(ff,"%ld",indexList+i ) ;
+/*		printf("%d %d %ld\n",i,j,indexList[i] ) ; */
+		if( j < 1 ) break ;
+	}
+	fclose(ff) ;
+	nIndexList = i ;
+	printf("nIndexList = %d\n",i) ;
+	qsort( indexList,nIndexList, sizeof(long long ) , compareLL ) ;
 }
 int readTable( char *suffix, int size, void **addr ) 
 {
@@ -208,12 +236,26 @@ int compareEvent( const void *p1, const void *p2 )
 	if ( i1 < i2 ) return -1  ;
 	return 0 ;
 }
+int testIndexList( long long index )
+{
+	static int i ;
+	int result ;
+	if( index == 0 ) { i = 0 ; return 0 ; } /* rewind index list */
+	while( indexList[i] < index - 300 ) i++ ;
+	if( indexList[i] > index + 600 ) result = 1 ; else result = 0 ;
+	if( shLogLevel > 4 ) 
+		printf("testIndexList %4d %ld %ld %d %14ld\n",
+			i,index,indexList[i],result,index-indexList[i] ) ;
+	return result ;
+}
 int testEvent( Event *ep, Phase *pp, int nP )
 {
 	int i,ns ;
 	static long long lastIndex ;
 	long long index ;
 	index = ep->index ;
+	if(shLogLevel > 4 ) 
+		printf(" testEvent : index=%ld  nP=%d\n",index,nP) ;
 	if ( index == lastIndex ) return 0 ; /* remove duplicates */
 	lastIndex = index ;
 	if ( index == (ep+1)->index ) return 0 ;
@@ -225,8 +267,9 @@ int testEvent( Event *ep, Phase *pp, int nP )
 	if ( ep->depth > zMax ) return 0 ;
 	if( index < indexMin )  return 0 ;
 	if( index > indexMax )  return 0 ;
+	if( nIndexList) if(testIndexList(index)) return 0 ; 
 	if( nP       < phasesMin )  return 0 ; 
-	if( nP       > phasesMax)  return 0 ; 
+	if( nP       > phasesMax )  return 0 ; 
 	ns = 0 ; 
 	for( i = 0 ; i < nP ; i++) if (pp[i].type == 'S' ) ns++ ;
 	if( ns < minSorP ) return 0 ;
@@ -371,7 +414,7 @@ void pass1()
 		lp++ ;
 	}
 	printf("%d iterations, nSol = %d nWorking = %d\n",sumi, nSol,op-solutions) ; 
-	nSol = op - solutions ;
+/*	nSol = op - solutions ; */
 	printf("leave pass1: nSol = %d\n",nSol);
 
 }
@@ -501,11 +544,11 @@ void searchRandom( int nVel )
 			*value[iPar] = work ;
 			if( nSol != lastNSol ) 
 				y0 = processVel() ;
-			range *= 0.995 ; 
+			range *= 0.98 ; 
 		}
 		printf("%3d ipar=%2d range=%9.5f delta=%9.5f y0=%10.7f %3d %3d %4d\n",
 			i,iPar,range,delta,y0,nOk,i-nOk,nSol ) ;
-	} while (i++ < 500 ) ;
+	} while (i++ < nIterations ) ;
 	for( i = 0 ; i < nPar ; i++) printf("%8.4f", *value[i] ) ;
 	printf("\n") ;
 }
@@ -561,9 +604,10 @@ void getData()
 /*	printP() ;
 	printE() ; */
 	printf("%d events, %d phases\n",nEvent,nPhase) ;
+	if( indexFile ) readIndexList() ;
 	checkPhases() ;
 	countEvents() ;
-	if( indexList ) readIndexList() ;
+	testIndexList(0) ; /* rewind index list */
 	printf("nEvent=%d nSol=%d\n",nEvent,nSol) ;
 	printE() ;
 	makeSolutions() ;
@@ -670,8 +714,9 @@ int cc ;
 	feenableexcept(FE_INVALID) ;
 	shLogLevel = 2 ;
 	rayTrace = 1 ;
-	while( EOF != ( cc = getopt(ac,av,"twd:e:z:Z:b:B:l:L:n:N:m:i:I:r:D:vspTM:V:X"))) {
+	while( EOF != ( cc = getopt(ac,av,"twd:e:z:Z:b:B:l:L:n:N:m:i:I:r:D:vspTM:V:XS:"))) {
 		switch(cc) {
+		case 'S' : nIterations = atoi(optarg) ; break ;
 		case 'd' : shLogLevel = atoi(optarg) ; break ;
 		case 'w' : locateSILWeight = 1 ; break ;
 /*		case 't' : rayTrace = 0 ; break ; */
@@ -692,7 +737,7 @@ int cc ;
 		case 'I' : indexMax = atoll(optarg)  ;
 			while (indexMax < INDEXEND/10 ) indexMax *= 10 ;
 			; break ;
-		case 'r' : indexList = optarg ; break ;
+		case 'r' : indexFile = optarg ; break ;
 		case 'D' : distMax = atof(optarg) ; break ;
 		case 'M' : nLayers = atoi(optarg) ; break ;
 		case 'V' : velPrefix = optarg ; break ;
