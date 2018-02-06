@@ -65,3 +65,11 @@ A sufficient condition is that gradient not be allowed to increase.
 Information to be printed out from editeve:
 	residual norm from Slunga.
 	command line
+
+22/12   
+	print on stdout with keywords, sutable for use by gnuplot and gmt:
+	 	event list
+		model parameters optained
+		rms residual for both p and s seperately.
+
+		

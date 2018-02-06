@@ -17,6 +17,7 @@ Phase *phases ;
 Solution *solutions ;
 int nEvent, nPhase, nSol, nIndexList ;
 extern VelModel mp,ms ;
+VelModel initP,initS ;
 long long *indexList ;
 
 /*		Default values */
@@ -27,7 +28,7 @@ int phasesMin = 8 ;
 int phasesMax = 999 ;
 int minSorP = 2 ;  /* minimum number of either p or s phases */
 double zMax = 15.0 ;
-double zMin = 2.5 ; 
+double zMin = 4.0 ; 
 double latMin = 63.0 ;
 double latMax = 65.0 ;
 double lonMin = -22.0 ;
@@ -36,7 +37,8 @@ double distMax  = 90.0 ;
 long long indexMin = 19910700000000000 ;
 long long indexMax = INDEXEND ;
 char *indexFile ;
-int nLayers = 6 ;
+int indexFileFraction = 100 ; /* precentage of entries from indexFile to use */
+int nLayers = 7 ;
 void printParameters( FILE *f)
 {
 	fprintf(f,"velPrefix = %s baseName = %s\n",velPrefix,baseName) ;
@@ -54,7 +56,7 @@ void printSolutions()
 	Solution *p ;
 	for( i = 0 ; i < nSol ; i++) {
 	  p = solutions + i ;
-	  printf("%ld %8.4f %8.3f %8.3f %8.3f" ,
+	  printf("%ld %8.4f %9.5f %9.5f %8.3f" ,
 		p->index, p->time, p->lon, p->lat, p->depth) ;
 	  printf("%2d %2d %2d %6.3f %6.3f %6.3f",
 		p->nP, p->nS, p->nIter, p->stdP,p->stdS, p->length ) ; 
@@ -384,6 +386,8 @@ initVel()
 	sprintf(sv,"%ss.vel",velPrefix ) ;
 	initVelModel(20,&mp) ; readVelModel(pv,&mp) ; 
 	initVelModel(20,&ms) ; readVelModel(sv,&ms) ; 
+	initVelModel(20,&initP) ; readVelModel(pv,&initP) ; 
+	initVelModel(20,&initS) ; readVelModel(sv,&initS) ; 
 	
 /*	vFInitFromMemory() ; */
 }
@@ -414,7 +418,7 @@ void pass1()
 		lp++ ;
 	}
 	printf("%d iterations, nSol = %d nWorking = %d\n",sumi, nSol,op-solutions) ; 
-/*	nSol = op - solutions ; */
+	nSol = op - solutions ; 
 	printf("leave pass1: nSol = %d\n",nSol);
 
 }
@@ -519,7 +523,6 @@ void searchRandom( int nVel )
 	nOk = 0 ;
 	nPar = 2*nVel ;
 	range = 0.049 ;
-	range = 0.002 ;
 	y0 = processVel() ; 
 	do {
 /*		iPar = iPar + 1 + random() % (nPar-1) ; */
@@ -703,6 +706,34 @@ void printIndexTable()
 	printPhaseTable() ;
 	exit(0) ;
 }
+void printResults(char *resultFile) 
+{
+	FILE *ff ;
+	Solution *p ;
+	int i ;
+	int nP,nS ;
+	double sumP,sumS ;
+	ff = fopen(resultFile,"w") ;
+	for( i = 0 ; i < nLayers ; i++) {
+		fprintf(ff,"RV %8.3f %8.3f %8.3f %8.3f %8.3f\n",
+			initP.z[i],initP.v[i],mp.v[i],initS.v[i],ms.v[i] ) ;
+	}
+	sumP = 0.0 ; sumS = 0.0 ; nP = 0 ; nS = 0 ;
+	for( i = 0 ; i < nSol ; i++) {
+	  p = solutions + i ;
+	  nP += p->nP ;
+	  nS += p->nS ;
+	  sumP += p->sumP ;
+	  sumS += p->sumS ;
+	  fprintf(ff,"RS %ld %8.4f %9.5f %9.5f %8.3f" ,
+		p->index, p->time, p->lon, p->lat, p->depth) ;
+	  fprintf(ff,"%3d %3d %3d %6.3f %6.3f %6.3f",
+		p->nP, p->nS, p->nIter, p->stdP,p->stdS, p->length ) ; 
+	  fprintf(ff,"\n") ;
+	}
+	fclose(ff) ;
+	
+}
 void testing()
 {
 	testLimits(8) ;
@@ -714,7 +745,7 @@ int cc ;
 	feenableexcept(FE_INVALID) ;
 	shLogLevel = 2 ;
 	rayTrace = 1 ;
-	while( EOF != ( cc = getopt(ac,av,"twd:e:z:Z:b:B:l:L:n:N:m:i:I:r:D:vspTM:V:XS:"))) {
+	while( EOF != ( cc = getopt(ac,av,"twd:e:z:Z:b:B:l:L:n:N:m:i:I:r:R:D:vspTM:V:XS:P:"))) {
 		switch(cc) {
 		case 'S' : nIterations = atoi(optarg) ; break ;
 		case 'd' : shLogLevel = atoi(optarg) ; break ;
@@ -738,6 +769,7 @@ int cc ;
 			while (indexMax < INDEXEND/10 ) indexMax *= 10 ;
 			; break ;
 		case 'r' : indexFile = optarg ; break ;
+		case 'R' : indexFileFraction = atoi(optarg) ; break ;
 		case 'D' : distMax = atof(optarg) ; break ;
 		case 'M' : nLayers = atoi(optarg) ; break ;
 		case 'V' : velPrefix = optarg ; break ;
@@ -747,6 +779,7 @@ int cc ;
 		case 'T' : testing() ; break ;
 		case 'p' : printSolutions() ; break ;
 		case 'X' : printIndexTable();  break ;
+		case 'P' : printResults(optarg); break ;
 	}}
 	printReport() ;
 	return 0 ;

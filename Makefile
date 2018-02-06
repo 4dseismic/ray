@@ -4,6 +4,9 @@ CFLAGS=-g
 top : editeve
 	editeve  -l -21 -L -20.0
 
+median : median.o
+	cc -g  -o median median.o -lm
+
 vf : velfit
 	velfit
 F= velfit.c ray.o golubc.o 
