@@ -93,3 +93,9 @@ double vFtimeFromXZ(char type, double x, double z, double *dtdx, double *dtdz) ;
 extern int rayTrace ;
 int  locate( Solution *sol, Phase *pp ) ;
 
+/* inverf.c */
+double grandom( double x0, double x1, double xcenter, double sdev ) ;
+/* return a random number in interval from x0 to x1, 
+	that has gaussian probabity density and is
+	centered on xcenter with standard deviation sdev */
+

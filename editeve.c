@@ -19,6 +19,7 @@ int nEvent, nPhase, nSol, nIndexList ;
 extern VelModel mp,ms ;
 VelModel initP,initS ;
 long long *indexList ;
+int gaussFlag, metropolis,noRandomize ;
 
 /*		Default values */
 int nIterations = 500 ;
@@ -505,6 +506,20 @@ void testLimits(int nvel)
 			mp.z[i],p1,mp.v[i],p2,slopeP,s1,ms.v[i],s2,slopeS) ;
 	}
 }
+int metropolisTest( double y1, double y0 ) 
+{
+	static double T ;
+	double t, rr ;
+	if( T == 0.0 ) T = 0.00002 ;
+	if( y1 < y0 ) return 1 ;
+	if( 0 == metropolis ) return 0 ;
+	t = exp( - ( y1 - y0 ) / T ) ;
+	rr = random() * 1.0 / RAND_MAX ;
+	printf("y1=%9.6f y0=%9.6f t=%9.5f rr=%9.5f T=%10.8f\n",y1,y0,t,rr,T) ;
+	T *= 0.999 ;
+	if (t > rr) return 1 ;
+	return 0 ;
+}
 void searchRandom( int nVel )
 {
 	int i, nPar, iPar, nOk, lastNSol ;
@@ -519,10 +534,10 @@ void searchRandom( int nVel )
 		*vp++ = ms.v+i ;
 	}
 	i = 0 ;
-	srandom(time(&tt)) ;
+	if( noRandomize == 0 ) srandom(time(&tt)) ;
 	nOk = 0 ;
 	nPar = 2*nVel ;
-	range = 0.049 ;
+	range = 0.060 ;
 	y0 = processVel() ; 
 	do {
 /*		iPar = iPar + 1 + random() % (nPar-1) ; */
@@ -530,24 +545,29 @@ void searchRandom( int nVel )
 		iPar %= nPar ;
 		upperL = upperParLimit(iPar) ;
 		lowerL = lowerParLimit(iPar) ;
-		work = *value[iPar] ;
-		if( (work + range) < upperL ) upperL = work + range ;
-		if( (work - range) > lowerL ) lowerL = work - range ;
-		rangeScale = RAND_MAX/(upperL - lowerL) ;
-		*value[iPar] = lowerL + (random() / rangeScale) ;
+		work = *value[iPar] ; 
+		if( gaussFlag) {
+			*value[iPar] = grandom(lowerL,upperL,work,range) ;
+		} else {
+			if( (work + range) < upperL ) upperL = work + range ;
+			if( (work - range) > lowerL ) lowerL = work - range ;
+			rangeScale = RAND_MAX/(upperL - lowerL) ;
+			*value[iPar] = lowerL + (random() / rangeScale) ;
+		}
 		delta = *value[iPar] - work ;
 /*		printf("i=%d iPar= %d delta=%8.2f \n",i,iPar,delta) ; */
 		lastNSol = nSol ;
 		y1 = processVel() ; 
-		if(( y1 < y0 ) && ( nSol == lastNSol )) {
+		if(( metropolisTest( y1 , y0 ) ) && ( nSol == lastNSol )) {  
 			nOk++ ;
 			y0 =  y1 ;
-			range *= 1.08 ; 
+/*			range *= 1.08 ;  */
 		} else {
 			*value[iPar] = work ;
 			if( nSol != lastNSol ) 
 				y0 = processVel() ;
-			range *= 0.98 ; 
+/*			range *= 0.98 ;  */
+			range *= 0.999 ;
 		}
 		printf("%3d ipar=%2d range=%9.5f delta=%9.5f y0=%10.7f %3d %3d %4d\n",
 			i,iPar,range,delta,y0,nOk,i-nOk,nSol ) ;
@@ -745,8 +765,11 @@ int cc ;
 	feenableexcept(FE_INVALID) ;
 	shLogLevel = 2 ;
 	rayTrace = 1 ;
-	while( EOF != ( cc = getopt(ac,av,"twd:e:z:Z:b:B:l:L:n:N:m:i:I:r:R:D:vspTM:V:XS:P:"))) {
+	while( EOF != ( cc = getopt(ac,av,"aAgtwd:e:z:Z:b:B:l:L:n:N:m:i:I:r:R:D:vspTM:V:XS:P:"))) {
 		switch(cc) {
+		case 'a' : metropolis = 1 ; break ;
+		case 'A' : noRandomize = 1 ; break ;
+		case 'g' : gaussFlag = 1 ; break ;  /* gaussian distribution in model space */
 		case 'S' : nIterations = atoi(optarg) ; break ;
 		case 'd' : shLogLevel = atoi(optarg) ; break ;
 		case 'w' : locateSILWeight = 1 ; break ;

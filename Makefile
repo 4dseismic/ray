@@ -13,8 +13,7 @@ F= velfit.c ray.o golubc.o
 velfit : $F 
 	cc -o velfit -DTEST  $F -lm
 	
-
-azimuth.o distance.o locate.o phases.o ray.o rayplot.o reltest.o stations.o travelt.o velfit.o minvel.o : ray.h
+azimuth.o distance.o editeve.o inverf.o locate.o locate_T.o median.o minvel.o phases.o ray.o rayplot.o readeve.o reltest.o slope.o stations.o travelt.o velfit.o : ray.h
 
 rayplott : rayplot
 	rayplot
@@ -59,7 +58,7 @@ E = readeve.o ray.o  stations.o
 readeve : $E
 	cc -g $E -lm -o readeve
 
-V = editeve.o locate.o shuffle.o ray.o distance.o stations.o velfit.o golubc.o
+V = editeve.o locate.o shuffle.o ray.o distance.o stations.o velfit.o golubc.o inverf.o 
 $E $V : ray.h Makefile
 editeve : $V
 	cc -g $V -lm -o editeve -lproj
