@@ -540,7 +540,6 @@ void searchRandom( int nVel )
 	range = 0.060 ;
 	y0 = processVel() ; 
 	do {
-/*		iPar = iPar + 1 + random() % (nPar-1) ; */
 		iPar = shuffle(nPar) ;
 		iPar %= nPar ;
 		upperL = upperParLimit(iPar) ;
@@ -561,12 +560,10 @@ void searchRandom( int nVel )
 		if(( metropolisTest( y1 , y0 ) ) && ( nSol == lastNSol )) {  
 			nOk++ ;
 			y0 =  y1 ;
-/*			range *= 1.08 ;  */
 		} else {
 			*value[iPar] = work ;
 			if( nSol != lastNSol ) 
 				y0 = processVel() ;
-/*			range *= 0.98 ;  */
 			range *= 0.999 ;
 		}
 		printf("%3d ipar=%2d range=%9.5f delta=%9.5f y0=%10.7f %3d %3d %4d\n",
@@ -661,8 +658,10 @@ void doLocations()
 		locate(lp,pp) ;
 	}
 }
-void printReport()
+void printReport(int ac, char **av)
 {
+	int j ;
+	time_t tt ;
 /*	(void) sortDouble(nSol,&(solutions->lat),sizeof(Solution) ); */
 	printf("nIter : ") ;
 	(void) sortInt(nSol,&(solutions->nIter),sizeof(Solution),10 );
@@ -681,6 +680,9 @@ void printReport()
 	printf("depth-: ") ;
 	(void) sortDouble(nSol,&(solutions->depth),sizeof(Solution), -5 ) ;
 	printParameters(stdout) ;
+	for(j = 0 ; j < ac ; j++ ) printf("%s ",av[j] ) ; 
+	tt = time(&tt) ;
+	printf("\n%s",ctime(&tt)) ;
 }
 void printPhaseTable()
 {
@@ -804,7 +806,7 @@ int cc ;
 		case 'X' : printIndexTable();  break ;
 		case 'P' : printResults(optarg); break ;
 	}}
-	printReport() ;
+	printReport(ac,av) ;
 	return 0 ;
 }
 
