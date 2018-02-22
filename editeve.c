@@ -37,9 +37,12 @@ double lonMax = -19.4 ;
 double distMax  = 90.0 ;
 long long indexMin = 19910700000000000 ;
 long long indexMax = INDEXEND ;
+double weightS = 0.35 ;  
+double temperature  =  0.03 ;
 char *indexFile ;
 int indexFileFraction = 100 ; /* precentage of entries from indexFile to use */
 int nLayers = 7 ;
+
 void printParameters( FILE *f)
 {
 	fprintf(f,"velPrefix = %s baseName = %s\n",velPrefix,baseName) ;
@@ -427,23 +430,28 @@ double processVel()
 {
 	Solution work, *lp, *op ;
 	Phase  *pp ;
+	double sumP,sumS,yy ;
+	int nP,nS ;
 	int i,n ;
-	double sst ;
+	nP = 0 ; nS = 0 ;
+	sumP = 0.0 ; sumS = 0.0 ;
 	n = nSol ;
-	sst = 0.0 ;
 	op = solutions ;
 	for ( i = 0 ; i < n ; i++ ) {
 		lp = solutions + i ;
 		work = *lp ;
 		pp = work.phase ;
 		locate( &work,pp) ;
-		 if( work.nIter < 350 ) {
-			sst +=  ( 0.5 * work.stdP + 0.3 * work.stdS ) ;
-			*op++ = work ;
-		}
+		nP += work.nP ;
+		nS += work.nS ;
+		sumP += work.sumP ;
+		sumS += work.sumS ;
+		*op++ = work ;
 	}
 	nSol = op-solutions ;
-	return sst/nSol ;
+	yy = ( sumP*(1.0-weightS) + sumS*weightS ) / ( nP*(1.0-weightS) + nS*weightS ) ;
+	yy = sqrt(yy) ;
+	return 1000*yy ; /* convert seconds to milliseconds */
 }
 double processVelOld( Solution *sol, int n )
 {
@@ -508,15 +516,13 @@ void testLimits(int nvel)
 }
 int metropolisTest( double y1, double y0 ) 
 {
-	static double T ;
 	double t, rr ;
-	if( T == 0.0 ) T = 0.00002 ;
 	if( y1 < y0 ) return 1 ;
 	if( 0 == metropolis ) return 0 ;
-	t = exp( - ( y1 - y0 ) / T ) ;
+	t = exp( - ( y1 - y0 ) / temperature ) ;
 	rr = random() * 1.0 / RAND_MAX ;
-	printf("y1=%9.6f y0=%9.6f t=%9.5f rr=%9.5f T=%10.8f\n",y1,y0,t,rr,T) ;
-	T *= 0.999 ;
+	printf("y1=%9.6f y0=%9.6f t=%9.5f rr=%9.5f temperature=%10.8f\n",y1,y0,t,rr,temperature) ;
+	temperature *= 0.999 ;
 	if (t > rr) return 1 ;
 	return 0 ;
 }
@@ -767,7 +773,7 @@ int cc ;
 	feenableexcept(FE_INVALID) ;
 	shLogLevel = 2 ;
 	rayTrace = 1 ;
-	while( EOF != ( cc = getopt(ac,av,"aAgtwd:e:z:Z:b:B:l:L:n:N:m:i:I:r:R:D:vspTM:V:XS:P:"))) {
+	while( EOF != ( cc = getopt(ac,av,"aAgtwd:e:z:Z:b:B:l:L:n:N:m:i:I:r:R:D:W:vspT:M:V:XS:P:"))) {
 		switch(cc) {
 		case 'a' : metropolis = 1 ; break ;
 		case 'A' : noRandomize = 1 ; break ;
@@ -796,12 +802,13 @@ int cc ;
 		case 'r' : indexFile = optarg ; break ;
 		case 'R' : indexFileFraction = atoi(optarg) ; break ;
 		case 'D' : distMax = atof(optarg) ; break ;
+		case 'W' : weightS = atof(optarg) ; break ;
+		case 'T' : temperature = atof(optarg) ; break ;
 		case 'M' : nLayers = atoi(optarg) ; break ;
 		case 'V' : velPrefix = optarg ; break ;
 /* action flags  */
 		case 'v' : doIt() ; break ;
 		case 's' : doLocations() ; break ;
-		case 'T' : testing() ; break ;
 		case 'p' : printSolutions() ; break ;
 		case 'X' : printIndexTable();  break ;
 		case 'P' : printResults(optarg); break ;
