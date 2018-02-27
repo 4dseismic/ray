@@ -37,11 +37,12 @@ double lonMax = -19.4 ;
 double distMax  = 90.0 ;
 long long indexMin = 19910700000000000 ;
 long long indexMax = INDEXEND ;
-double weightS = 0.35 ;  
+double weightS = 0.366 ;  
 double temperature  =  0.03 ;
 char *indexFile ;
 int indexFileFraction = 100 ; /* precentage of entries from indexFile to use */
 int nLayers = 7 ;
+int skipLayers = 0 ;
 
 void printParameters( FILE *f)
 {
@@ -52,7 +53,7 @@ void printParameters( FILE *f)
 	fprintf(f,"latitude from %8.4f to %8.4f\n",latMin,latMax) ;
 	fprintf(f,"longitude from %8.4f to %8.4f\n",lonMin,lonMax) ;
 	fprintf(f,"index from %ld to %ld\n",indexMin,indexMax) ;
-	fprintf(f,"nLayers = %d, distMax=%8.2f\n",nLayers,distMax) ;
+	fprintf(f,"nLayers = %d, skipLayers=%d, distMax=%8.2f\n",nLayers,skipLayers,distMax) ;
 }
 void printSolutions() 
 {
@@ -477,7 +478,7 @@ double lowerParLimit( ipar )
 	VelModel *m ;
 	if ( ipar % 2 ) m = &ms ;
 		else m = &mp ;
-	i = ipar/2 ;
+	i = skipLayers + ipar/2 ;
 	if( i == 0 ) return 0.0 ;
 	slope = ( m->v[i+1] - m->v[i-1] ) / ( m->z[i+1] - m->z[i-1] ) ;
 	limit = m->v[i-1] + ( m->z[i] - m->z[i-1] ) * slope ;
@@ -490,7 +491,7 @@ double upperParLimit( ipar )
 	VelModel *m ;
 	if ( ipar % 2 ) m = &ms ;
 		else m = &mp ;
-	i = ipar/2 ;
+	i = skipLayers + ipar/2 ;
 	slope = ( m->v[i+2] - m->v[i+1] ) / ( m->z[i+2] - m->z[i+1] ) ;
 	limit2 = m->v[i+1] - ( m->z[i+1] - m->z[i] ) * slope ;
 	if( i < 2 ) return limit2 ;
@@ -503,7 +504,7 @@ void testLimits(int nvel)
 {
 	int i ;
 	double p1,p2,s1,s2,slopeP,slopeS ;
-	for( i = 0 ; i < nvel ; i++ ) {
+	for( i = 0 ; i < nvel-skipLayers ; i++ ) {
 		p1 = lowerParLimit(2*i) ;
 		p2 = upperParLimit(2*i) ;
 		s1 = lowerParLimit(2*i+1) ;
@@ -535,10 +536,11 @@ void searchRandom( int nVel )
 	time_t tt ;
 	
 	vp = value ;
-	for( i = 0 ; i < nVel ; i++){
+	for( i = skipLayers ; i < nVel ; i++){
 		*vp++ = mp.v+i ;
 		*vp++ = ms.v+i ;
 	}
+	nVel = nLayers - skipLayers ;
 	i = 0 ;
 	if( noRandomize == 0 ) srandom(time(&tt)) ;
 	nOk = 0 ;
@@ -773,7 +775,7 @@ int cc ;
 	feenableexcept(FE_INVALID) ;
 	shLogLevel = 2 ;
 	rayTrace = 1 ;
-	while( EOF != ( cc = getopt(ac,av,"aAgtwd:e:z:Z:b:B:l:L:n:N:m:i:I:r:R:D:W:vspT:M:V:XS:P:"))) {
+	while( EOF != ( cc = getopt(ac,av,"aAgtwd:e:z:Z:b:B:l:L:n:N:m:i:I:r:R:D:W:vspT:M:j:V:XS:P:"))) {
 		switch(cc) {
 		case 'a' : metropolis = 1 ; break ;
 		case 'A' : noRandomize = 1 ; break ;
@@ -805,6 +807,7 @@ int cc ;
 		case 'W' : weightS = atof(optarg) ; break ;
 		case 'T' : temperature = atof(optarg) ; break ;
 		case 'M' : nLayers = atoi(optarg) ; break ;
+		case 'j' : skipLayers = atoi(optarg) ; break ;
 		case 'V' : velPrefix = optarg ; break ;
 /* action flags  */
 		case 'v' : doIt() ; break ;
