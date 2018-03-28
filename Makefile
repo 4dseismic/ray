@@ -1,4 +1,5 @@
 
+CFLAGS=-O2
 CFLAGS=-g
 
 top : editeve
@@ -56,12 +57,12 @@ T = travelt.o ray.o
 
 E = readeve.o ray.o  stations.o
 readeve : $E
-	cc -g $E -lm -o readeve
+	cc ${CFLAGS} $E -lm -o readeve
 
 V = editeve.o locate.o shuffle.o ray.o distance.o stations.o velfit.o golubc.o inverf.o 
 $E $V : ray.h Makefile
 editeve : $V
-	cc -g $V -lm -o editeve -lproj
+	cc  ${CFLAGS} $V -lm -o editeve -lproj
 
 travelt : $T
 	cc ${CFLAGS}  -o travelt $T -lm

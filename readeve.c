@@ -7,7 +7,7 @@
 #include "../rayt/ray.h"
 
 char *outputBaseName = "testing" ;
-char *rootName = "/data/bergth/4D/testing/sk1/1998/apr" ;
+char *rootName = "/data/bergth/4D/sk1/1998/apr" ;
 /* selection parameters for phases */
 double maxResidual = 1.1 ;
 double maxDistance = 85.0 ;

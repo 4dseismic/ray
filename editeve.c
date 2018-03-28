@@ -39,6 +39,7 @@ long long indexMin = 19910700000000000 ;
 long long indexMax = INDEXEND ;
 double weightS = 0.366 ;  
 double temperature  =  0.03 ;
+double resdMaxP = 0.07 ;
 char *indexFile ;
 int indexFileFraction = 100 ; /* precentage of entries from indexFile to use */
 int nLayers = 7 ;
@@ -400,8 +401,10 @@ void pass1()
 {	Solution *lp, *op ;
 	Phase *pp ;
 	int ii,sumi,nn ;
+	double resdMaxS ;
 /*	vFInitFromMemory() ; */
 	sumi = 0 ;
+	resdMaxS = 1.7 * resdMaxP ;
 	printf("enter pass1: nSol = %d\n",nSol);
 	for( ii = 0 ; ii < nSol ; ii++) {
 		lp = solutions + ii ;
@@ -418,14 +421,13 @@ void pass1()
 	lp = solutions ;
 	for( ii = 0 ; ii < nSol ; ii++) {
 		if( 	(lp->nIter < 12 ) &&
-			(lp->stdP < 0.07 ) &&
-			(lp->stdS < 0.1 )) *op++ = *lp ;
+			(lp->stdP < resdMaxP ) &&
+			(lp->stdS < resdMaxS )) *op++ = *lp ;
 		lp++ ;
 	}
-	printf("%d iterations, nSol = %d nWorking = %d\n",sumi, nSol,op-solutions) ; 
 	nSol = op - solutions ; 
+	printf("%d iterations, nSol = %d nWorking = %d\n",sumi, nSol,op-solutions) ; 
 	printf("leave pass1: nSol = %d\n",nSol);
-
 }
 double processVel() 
 {
@@ -775,7 +777,7 @@ int cc ;
 	feenableexcept(FE_INVALID) ;
 	shLogLevel = 2 ;
 	rayTrace = 1 ;
-	while( EOF != ( cc = getopt(ac,av,"aAgtwd:e:z:Z:b:B:l:L:n:N:m:i:I:r:R:D:W:vspT:M:j:V:XS:P:"))) {
+	while( EOF != ( cc = getopt(ac,av,"aAgtwd:e:z:Z:b:B:l:L:n:N:m:i:I:r:R:E:D:W:vspT:M:j:V:XS:P:"))) {
 		switch(cc) {
 		case 'a' : metropolis = 1 ; break ;
 		case 'A' : noRandomize = 1 ; break ;
@@ -805,6 +807,7 @@ int cc ;
 		case 'R' : indexFileFraction = atoi(optarg) ; break ;
 		case 'D' : distMax = atof(optarg) ; break ;
 		case 'W' : weightS = atof(optarg) ; break ;
+		case 'E' : resdMaxP = atof(optarg) ; break ;
 		case 'T' : temperature = atof(optarg) ; break ;
 		case 'M' : nLayers = atoi(optarg) ; break ;
 		case 'j' : skipLayers = atoi(optarg) ; break ;
