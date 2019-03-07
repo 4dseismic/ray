@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <time.h>
 #include <math.h>
 #include "../rayt/ray.h"
@@ -21,7 +22,7 @@ int month2number( char *monthName)
 	}
 	return -1 ;
 }
-writePhase( Phase *pp )
+void writePhase( Phase *pp )
 {
 	static FILE *ff ;
 	char fname[200] ;
@@ -35,7 +36,7 @@ writePhase( Phase *pp )
 	}
 	fwrite(pp, sizeof(Phase),1,ff) ;
 }
-writeEvent( Event *pp )
+void writeEvent( Event *pp )
 {
 	static FILE *ff ;
 	char fname[200] ;
@@ -154,7 +155,7 @@ void readEFile( char *ename )
 	}
 	fclose(efile) ;
 }
-void getEList(  )
+void getEList(  ) /* obsolete */
 {
 	FILE *efiles ;
 	char cmd[100] ;
@@ -172,6 +173,143 @@ void getEList(  )
 	writePhase(NULL) ;
 	
 }
+time_t index2utime( long long index )
+{
+	int s,m,h,d,mo,y ;
+	time_t tt ;
+	struct tm tm ;
+	index /= 1000 ;
+	tm.tm_sec=index % 100 ;
+	index /= 100 ;
+	tm.tm_min=index % 100 ;
+	index /= 100 ;
+	tm.tm_hour=index % 100 ;
+	index /= 100 ;
+	tm.tm_mday=index % 100 ;
+	index /= 100 ;
+	tm.tm_mon=index % 100 ;
+	tm.tm_year = index/100-1900 ;
+	tt = mktime(&tm) ;
+/*	printf("%s",ctime(&tt)) ; */
+	return tt ;
+}
+int getPhases( Event *ep, char *evePath )
+{
+	static Phase phase ;
+	FILE *eveFile ;
+	time_t tt ;
+	char line[300]  ;
+	size_t n ;
+	int ms,hour,min,sec,j,len,skip ;
+	int pHour,pMin,iPhase ;
+	double pSec, pTime,dist ;
+	eveFile = fopen(evePath,"r") ;
+	if( NULL == eveFile) return 0 ;
+	tt = index2utime( ep->index ) ;
+	ms = ep->index % 1000 ;
+	sec = tt%60 ;
+	j=tt/60 ;
+	min = j%60 ;
+	hour = (j/60)%24 ;
+/*	printf("%2d %2d %2d %3d\n",hour,min,sec,ms) ;  */
+	skip = 6 ;
+	iPhase = 1 ;
+	while ( fgets(line,299,eveFile)) 
+	{
+		if( skip-- > 0 ) continue ;
+		if( *line == '0') break ;
+		phase.index = ep->index ;
+		pHour = atoi(line+7) ;
+		pMin = atoi(line+10) ;
+		pSec = atof(line+13) ;
+		dist = atof(line+31) ;
+		pSec += (pMin-min)*60.0 +(pHour-hour)*3600.0 - sec ;
+		if(pSec < 0 ) pSec += 3600.0*24.0 ;
+		phase.pTime = pSec - ms*0.001 ;
+		phase.residual = atof(line+18) ;
+		phase.weight = atof(line+24) ;
+		phase.iPhase = iPhase++ ;
+		phase.type =  (255-32) & line[5] ;   /* upper case */
+		strncpy(phase.station,line+1,3) ;
+		phase.station[3] = 0 ;
+		if( shLogLevel > 6 ) {
+			printf("%s",line) ;
+			printf("%d %d %12.3f\n",pHour,pMin,pSec) ;
+		}
+		if( fabs(phase.residual) < maxResidual ) 
+			if( dist < maxDistance ) 
+				if((phase.weight) != 0.0 ) writePhase(&phase) ;
+	}	 
+	fclose(eveFile) ;
+	return 1 ;
+}
+void getLibFile( char *path )
+{
+	FILE *libFile ;
+	char buff[500] ;
+	char evePath[200] ;
+	int len,j ;
+	size_t n ;
+	char *line ;
+	static Event ev ;
+	static Phase phase ;
+	int ymd ;
+	double hms ;
+	static long long indexScale = 1000000000 ;
+	long long hmsll ;
+	static char eveName[50] ;
+	len = strlen(path) ;
+	strncpy(buff,path,499) ;
+	buff[len-1] = 0 ;
+	libFile = fopen(buff,"r") ;
+	if( shLogLevel > 6 ) printf("%x=%s=\n",libFile,buff ) ;
+	line = NULL ;
+	while( 5 < (len = getline(&line,&n,libFile))){
+		if(line[18]==' ') line[18] = '0' ;
+		if( shLogLevel > 6 ) printf("%d %s",len, line ) ;
+		ymd = atoi(line+5) ;
+		hms = atof(line+14) ;
+		hmsll = hms*1000.0 ;
+		ev.index = ymd*indexScale + hmsll ;
+		ev.lat = atof(line+25) ;
+		ev.lon = atof(line+34) ;
+		ev.depth = atof(line+44) ;
+		ev.time = 0.0 ;
+		strncpy(eveName,line+61,31) ;
+/*		printf("ymd=%d hms=%12.4f ev.index=%lld %f %f %f %s.eve\n",
+			ymd,hms,ev.index,ev.lat,ev.lon,ev.depth,eveName) ; */
+		strncpy(buff,path,100) ;
+		j = strlen(path)-12;
+		buff[j]=0 ;
+		sprintf(evePath,"%s%s.eve",buff,eveName+12) ;
+		if (getPhases( &ev, evePath ) ) writeEvent(&ev) ;
+
+	}
+	fclose(libFile) ;
+	
+}
+void getLibList()
+{
+	FILE *libFiles ;
+	char cmd[400] ;
+	char *line ;
+	size_t n ;
+	int len ;
+	sprintf(cmd,"find %s -name events.lib", rootName) ;
+/*	printf("%s\n",cmd) ; */
+	libFiles = popen(cmd,"r") ;
+	line = NULL ;
+	while( 5 < ( len = getline(&line,&n, libFiles))) {
+/*		printf("%d %d %s",len,n,line) ;  */
+		if(line) {
+			getLibFile(line) ;  
+			free(line) ;
+		}
+		line = NULL ;
+	}
+	fclose(libFiles) ;
+/*	printf("exit getLibList\n") ; */
+}
 int main(int ac , char **av)
 {
 	int cc ;
@@ -185,5 +323,6 @@ int main(int ac , char **av)
 		case 'd' : maxDistance = atof(optarg ) ; break ;
 		case 'r' : maxResidual = atof(optarg ) ; break ;
 	}}
-	getEList();
+	getLibList();
+	exit(1) ;
 }

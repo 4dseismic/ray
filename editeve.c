@@ -64,8 +64,8 @@ void printSolutions()
 	  p = solutions + i ;
 	  printf("%ld %8.4f %9.5f %9.5f %8.3f" ,
 		p->index, p->time, p->lon, p->lat, p->depth) ;
-	  printf("%2d %2d %2d %6.3f %6.3f %6.3f",
-		p->nP, p->nS, p->nIter, p->stdP,p->stdS, p->length ) ; 
+	  printf("%2d %2d %2d %6.3f %6.3f %6.3f %4d",
+		p->nP, p->nS, p->nIter, p->stdP,p->stdS, p->length,p->nBadConv ) ; 
 	printf("\n") ;
 	}
 }
@@ -181,28 +181,31 @@ int readTable( char *suffix, int size, void **addr )
 	n = read(fd,*addr,space) ; 
 	return nRec ;
 }
-void printS()
+void printS(char *key, char *label)
 {
 	int i ;
 	Solution *p ;
-	if( shLogLevel < 6 ) return ;
+	if( shLogLevel < 3 ) return ;
 	p = solutions ;
+	printf("printS %s\n",label) ;
 	for( i = 0 ; i < nSol ; i++) {
-		printf("%3d %ld %8.3f %8.4f %8.4f %8.1f %3d %3d %3d\n",
-			i,p->index,p->time,p->lat,p->lon,p->depth,p->nPhase,p->nP,p->nS  ) ;
+		printf("%s %3d %ld %8.3f %9.5f %9.5f %8.1f %3d %3d %3d %3d %8.2f\n",
+			key, i,p->index,p->time,p->lat,p->lon,p->depth,p->nPhase,p->nP,p->nS,
+			p->nBadConv,p->sumLength ) ;
 		p++ ;
 	}
 }
-void printE()
+void printE(char *label)
 {
 	int i,nn ;
 	Event *p ;
-	if( shLogLevel < 6 ) return ;
+	if( shLogLevel < 3 ) return ;
 	p = events ;
 	nn = nEvent ;
 	if( nn > 10 ) nn = 10 ;
+	printf("printE %s\n",label) ;
 	for( i = 0 ; i < nn ; i++) {
-		printf("%3d %ld %8.3f %8.4f %8.4f %8.1f\n",
+		printf("%3d %ld %8.3f %9.5f %9.5f %8.1f\n",
 			i,p->index,p->time,p->lat,p->lon,p->depth  ) ;
 		p++ ;
 	}
@@ -211,7 +214,7 @@ void printP()
 {
 	int i,n ;
 	Phase *p ;
-	if( shLogLevel < 6 ) return ;
+	if( shLogLevel < 4 ) return ;
 	p = phases ;
 	n = nPhase ;
 	if( n > 500 ) n = 500 ;
@@ -449,6 +452,8 @@ double processVel()
 		nS += work.nS ;
 		sumP += work.sumP ;
 		sumS += work.sumS ;
+		if(work.nIter == 35) work.nBadConv++ ;
+		work.sumLength += work.length ;
 		*op++ = work ;
 	}
 	nSol = op-solutions ;
@@ -625,23 +630,23 @@ void getData()
 {
 	nEvent = readTable("event", sizeof(Event),(void *) &events) ;
 	nPhase = readTable("phase", sizeof(Phase),(void *) &phases) ;
-	printE() ;
+	printE("in getData") ;
 /*	printP() ;
 	printE() ; */
 	qsort(phases,nPhase,sizeof(Phase), comparePhase ) ; 
 	qsort(events,nEvent,sizeof(Event), compareEvent ) ; 
 	printP() ;
 /*	printP() ;
-	printE() ; */
+	printE("after sort in getData") ; */
 	printf("%d events, %d phases\n",nEvent,nPhase) ;
 	if( indexFile ) readIndexList() ;
 	checkPhases() ;
 	countEvents() ;
 	testIndexList(0) ; /* rewind index list */
 	printf("nEvent=%d nSol=%d\n",nEvent,nSol) ;
-	printE() ;
+	printE("after testIndexList in getData") ;
 	makeSolutions() ;
-	printS() ;
+	printS("LGD","leaving GetData") ;
 	printP() ;
 }
 void doIt()
@@ -650,8 +655,10 @@ void doIt()
 /*	printP() ; */
 	initVel() ;
 	pass1() ;
+	printS("AP1","after pass1") ;
 /*	serach(6) ;    */
 	searchRandom(nLayers) ;
+	printS("ASR","after searchRandom") ;
 }
 void doLocations()
 {
@@ -774,7 +781,7 @@ int main( int ac, char **av)
 {
 int cc ;
 	extern char *optarg ;	
-	feenableexcept(FE_INVALID) ;
+/*	feenableexcept(FE_INVALID) ; */
 	shLogLevel = 2 ;
 	rayTrace = 1 ;
 	while( EOF != ( cc = getopt(ac,av,"aAgtwd:e:z:Z:b:B:l:L:n:N:m:i:I:r:R:E:D:W:vspT:M:j:V:XS:P:"))) {

@@ -34,6 +34,8 @@ typedef struct {
 	double sumP,sumS ;
 	double stdP,stdS ;
 	double length ;
+	int nBadConv ;
+	float sumLength ;
 } Solution ;
 typedef struct {
 	long long index ;
