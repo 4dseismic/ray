@@ -770,6 +770,7 @@ void printResults(char *resultFile)
 		p->nP, p->nS, p->nIter, p->stdP,p->stdS, p->length ) ; 
 	  fprintf(ff,"\n") ;
 	}
+	listStations(ff,"STC") ;
 	fclose(ff) ;
 	
 }

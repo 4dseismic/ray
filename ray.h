@@ -11,6 +11,7 @@ typedef struct {
 
 typedef struct {
 	char name[4] ;
+	int useCount ;
 	double lat,lon,depth ;
 } Station ;
 
@@ -100,4 +101,7 @@ double grandom( double x0, double x1, double xcenter, double sdev ) ;
 /* return a random number in interval from x0 to x1, 
 	that has gaussian probabity density and is
 	centered on xcenter with standard deviation sdev */
+/* stations.c */
+void clearStationCount();
+void listStations( FILE *ff, char *prefix );
 
